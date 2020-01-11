@@ -7,8 +7,8 @@
 
 void print_completion(char cmd[], int retval)
 {
-    printf("+ completed '%s' [%d]", cmd, retval);
-    fflush(stdout);
+    // Print completion message after cmd is executed
+    printf("+ completed '%s' [%d]\n", cmd, retval);
 }
 
 int main(void)
@@ -39,7 +39,7 @@ int main(void)
         if (nl)
             *nl = '\0';
 
-        // Builtin command
+        // Builtin 'exit' command
         if (!strcmp(cmd, "exit"))
         {
             retval = system(cmd);
@@ -48,9 +48,19 @@ int main(void)
             break;
         }
 
+        // Builtin 'pwd' command
+        if (!strcmp(cmd, "pwd"))
+        {
+            // char dir[CMDLINE_MAX];
+            // getcwd(dir, sizeof(dir));
+            retval = system(cmd);
+            // fprintf(stderr, "%s", dir);
+            print_completion(cmd, retval);
+        }
+
         // Regular command
-        retval = system(cmd);
-        fprintf(stdout, "Return status for '%s': %d\n", cmd, retval);
+        // retval = system(cmd);
+        // fprintf(stdout, "Return status for '%s': %d\n", cmd, retval);
     }
 
     return EXIT_SUCCESS;
