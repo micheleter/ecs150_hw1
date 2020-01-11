@@ -5,6 +5,12 @@
 
 #define CMDLINE_MAX 512
 
+void print_completion(char cmd[], int retval)
+{
+    printf("+ completed '%s' [%d]", cmd, retval);
+    fflush(stdout);
+}
+
 int main(void)
 {
     char cmd[CMDLINE_MAX];
@@ -36,7 +42,9 @@ int main(void)
         // Builtin command
         if (!strcmp(cmd, "exit"))
         {
+            retval = system(cmd);
             fprintf(stderr, "Bye...\n");
+            print_completion(cmd, retval);
             break;
         }
 
