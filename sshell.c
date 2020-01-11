@@ -51,10 +51,7 @@ int main(void)
         // Builtin 'pwd' command
         if (!strcmp(cmd, "pwd"))
         {
-            // char dir[CMDLINE_MAX];
-            // getcwd(dir, sizeof(dir));
             retval = system(cmd);
-            // fprintf(stderr, "%s", dir);
             print_completion(cmd, retval);
         }
 
