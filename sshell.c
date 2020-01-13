@@ -2,13 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <errno.h>
+#include <sys/wait.h>
 
 #define CMDLINE_MAX 512
 
 void print_completion(char cmd[], int retval)
 {
     // Print completion message after cmd is executed
-    printf("+ completed '%s' [%d]\n", cmd, retval);
+    fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
 }
 
 int main(void)
@@ -18,8 +20,8 @@ int main(void)
     while (1)
     {
         char *nl;
-        int retval;
-        char *fxn;
+        // int retval;
+        // char *fxn;
 
         // Print prompt
         printf("sshell$ ");
@@ -48,31 +50,48 @@ int main(void)
         // Builtin 'exit' command
         if (!strcmp(cmd, "exit"))
         {
-            retval = system(cmd);
-            fprintf(stderr, "Bye...\n");
-            print_completion(cmd, retval);
-            break;
+            pid_t pid;
+            int status;
+
+            pid = fork();
+            if (pid == 0)
+            {
+                // Child
+                execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
+            }
+            else if (pid > 0)
+            {
+                // Parent
+                wait(&status);
+                fprintf(stderr, "Bye...\n");
+                print_completion(cmd, status);
+                exit(1);
+            }
+            else
+            {
+                // Error
+                perror("fork");
+                exit(1);
+            }
         }
 
         // Builtin 'pwd' command
-        if (!strcmp(cmd, "pwd"))
-        {
-            retval = system(cmd);
-            print_completion(cmd, retval);
-        }
+        // if (!strcmp(cmd, "pwd"))
+        // {
+        //     char *dir;
+        //     retval = getcwd(dir, sizeof(dir));
+        //     fprintf(stderr, "%s\n", dir);
+        //     print_completion(cmd, retval);
+        // }
 
         // Builtin 'cd' command
         // if (!strcmp(fxn, "cd"))
         // {
-        //     retval = system(cmd);
-        //     if (!retval)
-        //     {
-        //         print_completion(cmd, retval);
-        //     }
-        //     else
-        //     {
-        //         printf("error\n");
-        //     }
+        //     char *arg = strtok(NULL, " \0\n");
+        //     printf("%s", arg);
+        //     retval = chdir(arg);
+        //     printf("%d", errno);
+        //     // print_completion(cmd, retval);
         // }
 
         // Regular command
