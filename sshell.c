@@ -2,102 +2,112 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include <errno.h>
 #include <sys/wait.h>
 
 #define CMDLINE_MAX 512
+#define ARG_MAX 16
+
+struct Command
+{
+        char *prefix;
+        char *args[ARG_MAX + 1];
+};
+
+struct Command *parseCommand(char *cmdStr)
+{
+        struct Command *command = malloc(sizeof(*command));
+        int i = 1;
+
+        char *cur = strtok(cmdStr, " ");
+        (command->args)[0] = cur;
+        command->prefix = cur;
+
+        while (cur)
+        {
+                cur = strtok(NULL, " ");
+                (command->args)[i] = cur;
+                i++;
+        }
+        (command->args)[i] = '\0';
+
+        return command;
+}
 
 void print_completion(char cmd[], int retval)
 {
-    // Print completion message after cmd is executed
-    fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
+        // Print completion message after cmd is executed
+        fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
 }
 
 int main(void)
 {
-    char cmd[CMDLINE_MAX];
+        char cmd[CMDLINE_MAX];
 
-    while (1)
-    {
-        char *nl;
-        // int retval;
-        // char *fxn;
-
-        // Print prompt
-        printf("sshell$ ");
-        fflush(stdout);
-
-        // Get command line
-        fgets(cmd, CMDLINE_MAX, stdin);
-
-        // Sets 'fxn' equal to first input, if cmd is more than one arg
-        // fxn = calloc(strlen(cmd) + 1, sizeof(char));
-        // strcpy(fxn, cmd);
-        // strtok(fxn, " ");
-
-        // Print command line if stdin is not provided by terminal
-        if (!isatty(STDIN_FILENO))
+        while (1)
         {
-            printf("%s", cmd);
-            fflush(stdout);
+                char *nl;
+                char fxn[CMDLINE_MAX];
+                int retval;
+                int status;
+                pid_t pid;
+
+                /* Print prompt */
+                printf("sshell$ ");
+                fflush(stdout);
+
+                /* Get command line */
+                fgets(cmd, CMDLINE_MAX, stdin);
+                strcpy(fxn, cmd);
+                struct Command *command = parseCommand(fxn);
+
+                /* Print command line if stdin is not provided by terminal */
+                if (!isatty(STDIN_FILENO))
+                {
+                        printf("%s", cmd);
+                        fflush(stdout);
+                }
+
+                /* Remove trailing newline from command line */
+                nl = strchr(cmd, '\n');
+                if (nl)
+                        *nl = '\0';
+
+                /* Builtin command */
+                if (!strcmp(cmd, "exit"))
+                {
+                        pid = getpid();
+                        retval = kill(pid, 0);
+                        fprintf(stderr, "Bye...\n");
+                        print_completion(cmd, retval);
+                        break;
+                }
+
+                /* Regular command */
+                pid = fork();
+                if (pid == 0)
+                {
+                        // Child
+                        retval = execvp(command->args[0], command->args);
+                }
+                else if (pid > 0)
+                {
+                        // Parent
+                        waitpid(-1, &status, 0);
+                        print_completion(cmd, status);
+                        printf("Child exited with status: %d\n", WEXITSTATUS(status));
+                        printf("%d\n", retval);
+                }
+                else
+                {
+                        // Error
+                        perror("fork");
+                        exit(1);
+                }
+
+                // retval = system(cmd);
+                // fprintf(stdout, "Return status value for '%s': %d\n",
+                // cmd, retval);
         }
 
-        // Remove trailing newline from command line
-        nl = strchr(cmd, '\n');
-        if (nl)
-            *nl = '\0';
-
-        // Builtin 'exit' command
-        if (!strcmp(cmd, "exit"))
-        {
-            pid_t pid;
-            int status;
-
-            pid = fork();
-            if (pid == 0)
-            {
-                // Child
-                execl("/bin/sh", "sh", "-c", cmd, (char *)NULL);
-            }
-            else if (pid > 0)
-            {
-                // Parent
-                wait(&status);
-                fprintf(stderr, "Bye...\n");
-                print_completion(cmd, status);
-                exit(1);
-            }
-            else
-            {
-                // Error
-                perror("fork");
-                exit(1);
-            }
-        }
-
-        // Builtin 'pwd' command
-        // if (!strcmp(cmd, "pwd"))
-        // {
-        //     char *dir;
-        //     retval = getcwd(dir, sizeof(dir));
-        //     fprintf(stderr, "%s\n", dir);
-        //     print_completion(cmd, retval);
-        // }
-
-        // Builtin 'cd' command
-        // if (!strcmp(fxn, "cd"))
-        // {
-        //     char *arg = strtok(NULL, " \0\n");
-        //     printf("%s", arg);
-        //     retval = chdir(arg);
-        //     printf("%d", errno);
-        //     // print_completion(cmd, retval);
-        // }
-
-        // Regular command
-        // retval = system(cmd);
-        // fprintf(stdout, "Return status for '%s': %d\n", cmd, retval);
-    }
-
-    return EXIT_SUCCESS;
+        return EXIT_SUCCESS;
 }
