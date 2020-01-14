@@ -48,7 +48,7 @@ int main(void)
         {
                 char *nl;
                 char fxn[CMDLINE_MAX];
-                // int retval;
+                int retval;
                 int status;
                 pid_t pid;
 
@@ -75,33 +75,57 @@ int main(void)
                 command = parseCommand(fxn);
 
                 /* Builtin command */
-                if (!strcmp(cmd, "exit"))
+                if (!strcmp(command->prefix, "exit"))
                 {
                         fprintf(stderr, "Bye...\n");
                         print_completion(cmd, errno);
                         break;
                 }
-
-                /* Regular command */
-                pid = fork();
-                if (pid == 0)
+                else if (!strcmp(cmd, "pwd"))
                 {
-                        // Child
-                        execvp(command->prefix, command->args);
-                        perror("execvp");
-                        exit(1);
+                        char buf[CMDLINE_MAX];
+                        char *dir = getcwd(buf, (size_t)CMDLINE_MAX);
+                        if (dir)
+                        {
+                                printf("%s\n", dir);
+                                print_completion(cmd, errno);
+                        }
+                        else
+                        {
+                                perror("getcwd");
+                        }
                 }
-                else if (pid > 0)
+                else if (!strcmp(command->prefix, "cd"))
                 {
-                        // Parent
-                        waitpid(-1, &status, 0);
-                        print_completion(cmd, status);
+                        retval = chdir(command->args[1]);
+                        if (!retval)
+                        {
+                                print_completion(cmd, retval);
+                        }
                 }
                 else
                 {
-                        // Error
-                        perror("fork");
-                        exit(1);
+                        /* Regular command */
+                        pid = fork();
+                        if (pid == 0)
+                        {
+                                // Child
+                                execvp(command->prefix, command->args);
+                                perror("execvp");
+                                exit(1);
+                        }
+                        else if (pid > 0)
+                        {
+                                // Parent
+                                waitpid(-1, &status, 0);
+                                print_completion(cmd, status);
+                        }
+                        else
+                        {
+                                // Error
+                                perror("fork");
+                                exit(1);
+                        }
                 }
         }
 
