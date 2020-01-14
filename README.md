@@ -1,0 +1,2 @@
+# ecs150_hw1
+Created a simple shell to demonstrate important UNIX system calls. Implemented a variety of features, including execution of user-supplied commands with optional arguments, selection of typical built-in commands, redirection of standard output and standard error of commands to files, composition of commands via piping, and a directory stack that tracks the directories that have been visited.
