@@ -11,7 +11,7 @@
 struct Command
 {
         char *prefix;
-        char *args[CMDLINE_MAX];
+        char *args[ARG_MAX + 2];
 } Command;
 
 struct Command *parseCommand(char *cmdStr)
@@ -31,14 +31,6 @@ struct Command *parseCommand(char *cmdStr)
         }
         command->args[i] = NULL;
 
-        // for (u_int i = 0; i < sizeof(argu) / sizeof(char *); i++)
-        // {
-        //         if (argu[i] == NULL)
-        //         {
-        //                 printf("NULL\n");
-        //         }
-        //         printf("%s\n", argu[i]);
-        // }
         return command;
 }
 
@@ -66,7 +58,7 @@ int main(void)
 
                 /* Get command line */
                 fgets(cmd, CMDLINE_MAX, stdin);
-                struct Command *command = parseCommand(fxn);
+                struct Command *command;
 
                 /* Print command line if stdin is not provided by terminal */
                 if (!isatty(STDIN_FILENO))
@@ -80,6 +72,7 @@ int main(void)
                 if (nl)
                         *nl = '\0';
                 strcpy(fxn, cmd);
+                command = parseCommand(fxn);
 
                 /* Builtin command */
                 if (!strcmp(cmd, "exit"))
