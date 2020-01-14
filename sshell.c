@@ -3,35 +3,36 @@
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include <errno.h>
 
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
 
-struct Command
-{
-        char *prefix;
-        char *args[ARG_MAX + 1];
-};
+// struct Command
+// {
+//         char *prefix;
+//         char *args[ARG_MAX + 1];
+// };
 
-struct Command *parseCommand(char *cmdStr)
-{
-        struct Command *command = malloc(sizeof(*command));
-        int i = 1;
+// struct Command *parseCommand(char *cmdStr)
+// {
+//         struct Command *command = malloc(sizeof(*command));
+//         int i = 1;
 
-        char *cur = strtok(cmdStr, " ");
-        (command->args)[0] = cur;
-        command->prefix = cur;
+//         char *cur = strtok(cmdStr, " ");
+//         (command->args)[0] = cur;
+//         command->prefix = cur;
 
-        while (cur)
-        {
-                cur = strtok(NULL, " ");
-                (command->args)[i] = cur;
-                i++;
-        }
-        (command->args)[i] = '\0';
+//         while (cur)
+//         {
+//                 cur = strtok(NULL, " ");
+//                 (command->args)[i] = cur;
+//                 i++;
+//         }
+//         (command->args)[i] = '\0';
 
-        return command;
-}
+//         return command;
+// }
 
 void print_completion(char cmd[], int retval)
 {
@@ -46,8 +47,8 @@ int main(void)
         while (1)
         {
                 char *nl;
-                char fxn[CMDLINE_MAX];
-                int retval;
+                // char fxn[CMDLINE_MAX];
+                // int retval;
                 int status;
                 pid_t pid;
 
@@ -57,8 +58,9 @@ int main(void)
 
                 /* Get command line */
                 fgets(cmd, CMDLINE_MAX, stdin);
-                strcpy(fxn, cmd);
-                struct Command *command = parseCommand(fxn);
+                // strcpy(fxn, cmd);
+                // struct Command *command = parseCommand(fxn);
+                char *args[2] = {cmd, NULL};
 
                 /* Print command line if stdin is not provided by terminal */
                 if (!isatty(STDIN_FILENO))
@@ -75,10 +77,8 @@ int main(void)
                 /* Builtin command */
                 if (!strcmp(cmd, "exit"))
                 {
-                        pid = getpid();
-                        retval = kill(pid, 0);
                         fprintf(stderr, "Bye...\n");
-                        print_completion(cmd, retval);
+                        print_completion(cmd, errno);
                         break;
                 }
 
@@ -87,15 +87,14 @@ int main(void)
                 if (pid == 0)
                 {
                         // Child
-                        retval = execvp(command->args[0], command->args);
+                        execvp(args[0], args);
+                        exit(1);
                 }
                 else if (pid > 0)
                 {
                         // Parent
                         waitpid(-1, &status, 0);
                         print_completion(cmd, status);
-                        printf("Child exited with status: %d\n", WEXITSTATUS(status));
-                        printf("%d\n", retval);
                 }
                 else
                 {
@@ -103,10 +102,6 @@ int main(void)
                         perror("fork");
                         exit(1);
                 }
-
-                // retval = system(cmd);
-                // fprintf(stdout, "Return status value for '%s': %d\n",
-                // cmd, retval);
         }
 
         return EXIT_SUCCESS;
