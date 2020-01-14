@@ -8,11 +8,11 @@
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
 
-// struct Command
-// {
-//         char *prefix;
-//         char *args[ARG_MAX + 1];
-// };
+struct Command
+{
+        char *prefix;
+        char *args[ARG_MAX + 1];
+};
 
 // struct Command *parseCommand(char *cmdStr)
 // {
