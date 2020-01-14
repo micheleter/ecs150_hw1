@@ -11,28 +11,36 @@
 struct Command
 {
         char *prefix;
-        char *args[ARG_MAX + 1];
-};
+        char *args[CMDLINE_MAX];
+} Command;
 
-// struct Command *parseCommand(char *cmdStr)
-// {
-//         struct Command *command = malloc(sizeof(*command));
-//         int i = 1;
+struct Command *parseCommand(char *cmdStr)
+{
+        struct Command *command = malloc(sizeof(struct Command));
 
-//         char *cur = strtok(cmdStr, " ");
-//         (command->args)[0] = cur;
-//         command->prefix = cur;
+        int i = 1;
+        char *cur = strtok(cmdStr, " ");
+        command->args[0] = cur;
+        command->prefix = cur;
 
-//         while (cur)
-//         {
-//                 cur = strtok(NULL, " ");
-//                 (command->args)[i] = cur;
-//                 i++;
-//         }
-//         (command->args)[i] = '\0';
+        while (cur)
+        {
+                cur = strtok(NULL, " ");
+                command->args[i] = cur;
+                i++;
+        }
+        command->args[i] = NULL;
 
-//         return command;
-// }
+        // for (u_int i = 0; i < sizeof(argu) / sizeof(char *); i++)
+        // {
+        //         if (argu[i] == NULL)
+        //         {
+        //                 printf("NULL\n");
+        //         }
+        //         printf("%s\n", argu[i]);
+        // }
+        return command;
+}
 
 void print_completion(char cmd[], int retval)
 {
@@ -47,7 +55,7 @@ int main(void)
         while (1)
         {
                 char *nl;
-                // char fxn[CMDLINE_MAX];
+                char fxn[CMDLINE_MAX];
                 // int retval;
                 int status;
                 pid_t pid;
@@ -58,9 +66,7 @@ int main(void)
 
                 /* Get command line */
                 fgets(cmd, CMDLINE_MAX, stdin);
-                // strcpy(fxn, cmd);
-                // struct Command *command = parseCommand(fxn);
-                char *args[2] = {cmd, NULL};
+                struct Command *command = parseCommand(fxn);
 
                 /* Print command line if stdin is not provided by terminal */
                 if (!isatty(STDIN_FILENO))
@@ -73,6 +79,7 @@ int main(void)
                 nl = strchr(cmd, '\n');
                 if (nl)
                         *nl = '\0';
+                strcpy(fxn, cmd);
 
                 /* Builtin command */
                 if (!strcmp(cmd, "exit"))
@@ -87,7 +94,8 @@ int main(void)
                 if (pid == 0)
                 {
                         // Child
-                        execvp(args[0], args);
+                        execvp(command->prefix, command->args);
+                        perror("execvp");
                         exit(1);
                 }
                 else if (pid > 0)
