@@ -97,11 +97,22 @@ int main(void)
                 }
                 else if (!strcmp(command->prefix, "cd"))
                 {
-                        retval = chdir(command->args[1]);
-                        if (!retval)
-                        {
-                                print_completion(cmd, retval);
-                        }
+			if (command->args[1] != NULL)
+			{
+                        	retval = chdir(command->args[1]);
+                        	if (!retval)
+                        	{
+                                	print_completion(cmd, retval);
+                        	} 
+				else 
+				{
+					perror("chdir");
+				}
+			}
+			else
+			{
+				fprintf(stderr, "Null directory\n");
+			}
                 }
                 else
                 {
