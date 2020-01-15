@@ -4,6 +4,10 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <errno.h>
+#include <stdbool.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
@@ -12,21 +16,25 @@ struct Command
 {
         char *prefix;
         char *args[ARG_MAX + 2];
+        // char *fileName;
 } Command;
 
 struct Command *parseCommand(char *cmdStr)
 {
         struct Command *command = malloc(sizeof(struct Command));
+        // char* nr;
 
         int i = 1;
         char *cur = strtok(cmdStr, " ");
-        command->args[0] = cur;
         command->prefix = cur;
+        command->args[0] = command->prefix;
 
         while (cur)
         {
                 cur = strtok(NULL, " ");
+
                 command->args[i] = cur;
+
                 i++;
         }
         command->args[i] = NULL;
@@ -47,10 +55,15 @@ int main(void)
         while (1)
         {
                 char *nl;
+                char *nr;
+                char *cur;
+                // char *tmp;
                 char fxn[CMDLINE_MAX];
                 int retval;
                 int status;
+                // int fd;
                 pid_t pid;
+                // bool needsRedirection = false;
 
                 /* Print prompt */
                 printf("sshell$ ");
@@ -71,10 +84,26 @@ int main(void)
                 nl = strchr(cmd, '\n');
                 if (nl)
                         *nl = '\0';
-                strcpy(fxn, cmd);
-                command = parseCommand(fxn);
 
-                /* Builtin command */
+                /* Finds output redirection character */
+                strcpy(fxn, cmd);
+                nr = strchr(fxn, '>');
+                // int count = 1;
+                if (nr) {
+                        cur = strtok(fxn, ">");
+                        // printf("%s\n", cur);
+                        while (cur) {
+                          cur = strtok(NULL, ">");
+                        }
+
+                }
+                else {
+                  command = parseCommand(fxn);
+                }
+
+
+
+                /* Builtin commands */
                 if (!strcmp(command->prefix, "exit"))
                 {
                         fprintf(stderr, "Bye...\n");
@@ -97,22 +126,22 @@ int main(void)
                 }
                 else if (!strcmp(command->prefix, "cd"))
                 {
-			if (command->args[1] != NULL)
-			{
-                        	retval = chdir(command->args[1]);
-                        	if (!retval)
-                        	{
-                                	print_completion(cmd, retval);
-                        	} 
-				else 
-				{
-					perror("chdir");
-				}
-			}
-			else
-			{
-				fprintf(stderr, "Null directory\n");
-			}
+                  			if (command->args[1] != NULL)
+                  			{
+                                retval = chdir(command->args[1]);
+                                if (!retval)
+                                {
+                                       print_completion(cmd, retval);
+                                }
+                  				      else
+                  				      {
+                  					           perror("chdir");
+                  				      }
+                  			}
+                  			else
+                  			{
+                  				fprintf(stderr, "Null directory\n");
+                  			}
                 }
                 else
                 {
