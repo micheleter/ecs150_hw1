@@ -15,24 +15,27 @@
 struct Command
 {
         char *prefix;
-        char *args[ARG_MAX + 2];
-        // char *fileName;
+        char **args;
 } Command;
 
-// char **setPrefix(struct Command *command, char *cmdStr)
-// {
-//         char **leftOff;
-//         command->prefix = strtok_r(cmdStr, " ", leftOff);
-//         return leftOff;
-// }
+void append(char *s, char c)
+{
+        int len = strlen(s);
+        s[len] = c;
+        s[len + 1] = '\0';
+}
 
 struct Command *parseCommand(char *cmdStr)
 {
         struct Command *command = malloc(sizeof(struct Command));
+        command->args = malloc(ARG_MAX * sizeof(char *));
+        char cmd[CMDLINE_MAX] = "";
+        char *str;
+        u_int i = 0, j = 0;
 
-        for (u_int i = 0, j = 0; i < strlen(cmdStr); i++)
+        for (i = 0; i < strlen(cmdStr) + 1; i++)
         {
-                if (cmdStr[i] != ' ')
+                if ((cmdStr[i] != ' ') && (cmdStr[i] != '\0'))
                 {
                         // Either a meta-char or normal char
                         if (cmdStr[i] == '>')
@@ -43,26 +46,30 @@ struct Command *parseCommand(char *cmdStr)
                         }
                         else if (cmdStr[i] == '|')
                         {
-                                //                 // if (cmdStr[i + 1] == '&')
-                                //                 // {
-                                //                 // }
+                                // if (cmdStr[i + 1] == '&')
+                                // {
+                                // }
                         }
                         else
                         {
                                 // Normal char
-                                printf("Normal\n");
-                                char *tmp = strcat(command->args[j], &cmdStr[i]);
-                                // command->args[j] = "testing";
-                                printf("%s\n", tmp);
+                                char temp[2] = {cmdStr[i], '\0'};
+                                str = strcat(cmd, temp);
+                                // printf("%s\n", str);
                         }
                 }
                 else
                 {
                         // Space found
-                        printf("Space\n");
-                        j += 1;
+                        printf("%s\n", str);
+                        command->args[j] = str;
+                        cmd[0] = '\0';
+                        j++;
                 }
         }
+        command->args[j] = NULL;
+        printf("%s\n", command->args[0]);
+        // WHY DOES IT PRINT NOTHING, WHERE THE FUCK IS STR GOING
 
         return command;
 }
@@ -109,7 +116,6 @@ int main(void)
                 strcpy(fxn, cmd);
                 command = parseCommand(fxn);
                 command = command;
-
                 /* Builtin commands */
                 //         if (!strcmp(command->prefix, "exit"))
                 //         {
