@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <ctype.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/wait.h>
@@ -15,7 +16,9 @@
 struct Command
 {
         char *prefix;
-        char **args;
+        char args[ARG_MAX + 2][CMDLINE_MAX];
+        bool output_redir;
+        char *filename;
 } Command;
 
 void append(char *s, char c)
@@ -28,48 +31,56 @@ void append(char *s, char c)
 struct Command *parseCommand(char *cmdStr)
 {
         struct Command *command = malloc(sizeof(struct Command));
-        command->args = malloc(ARG_MAX * sizeof(char *));
+        command->output_redir = false;
         char cmd[CMDLINE_MAX] = "";
         char *str;
         u_int i = 0, j = 0;
+        // bool hit_output_redir = false, hit_pipe = false;
 
         for (i = 0; i < strlen(cmdStr) + 1; i++)
         {
-                if ((cmdStr[i] != ' ') && (cmdStr[i] != '\0'))
+                if (cmdStr[i] != ' ' && cmdStr[i] != '\0' && cmdStr[i] != '>' && cmdStr[i] != '|')
                 {
-                        // Either a meta-char or normal char
-                        if (cmdStr[i] == '>')
-                        {
-                                // if (cmdStr[i + 1] == '&')
-                                // {
-                                // }
-                        }
-                        else if (cmdStr[i] == '|')
-                        {
-                                // if (cmdStr[i + 1] == '&')
-                                // {
-                                // }
-                        }
-                        else
-                        {
-                                // Normal char
-                                char temp[2] = {cmdStr[i], '\0'};
-                                str = strcat(cmd, temp);
-                                // printf("%s\n", str);
-                        }
+                        // Normal char
+                        char temp[2] = {cmdStr[i], '\0'};
+                        str = strcat(cmd, temp);
                 }
                 else
                 {
-                        // Space found
-                        printf("%s\n", str);
-                        command->args[j] = str;
+                        // Hit space, pipe, or endl
+                        // if (hit_output_redir)
+                        // {
+                        //         command->filename = str;
+                        //         hit_output_redir = false;
+                        //         continue;
+                        // }
+                        // if (hit_pipe)
+                        // {
+                        //         continue;
+                        // }
+
+                        // if (cmdStr[i] == '>')
+                        // {
+                        //         command->output_redir = true;
+                        //         hit_output_redir = true;
+                        // }
+                        // else if (cmdStr[i] == '|')
+                        // {
+                        //         hit_pipe = true;
+                        // }
+                        // if (cmd[0] != '\0')
+                        // {
+                        strcpy(command->args[j], str);
                         cmd[0] = '\0';
+                        printf("%s\n", command->args[j]);
                         j++;
+                        // }
                 }
         }
-        command->args[j] = NULL;
-        printf("%s\n", command->args[0]);
-        // WHY DOES IT PRINT NOTHING, WHERE THE FUCK IS STR GOING
+        strcpy(command->args[j], "\0");
+        command->prefix = command->args[0];
+        // if (command->output_redir)
+        // printf("%s\n", command->filename);
 
         return command;
 }
