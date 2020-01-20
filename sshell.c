@@ -69,13 +69,15 @@ struct Command *parseCommand(char *cmdStr) {
         command->needs_output_redir = true;
         hit_output_redir = true;
       }
-
-      if (hit_output_redir && cmdStr[i] == '\0') {
-        printf("assigning filename\n");
-        command->filename = malloc(sizeof(char*));
-        strcpy(command->filename, str);
-        printf("assigned filename\n");
-        // hit_output_redir = false;
+      else if (cmdStr[i] == '\0') {
+        if (hit_output_redir) {
+          command->filename = malloc(sizeof(char*));
+          strcpy(command->filename, str);
+        }
+        else {
+          command->args[j] = malloc(sizeof(str) + 1);
+          strcpy(command->args[j], str);
+        }
       }
 
       if (cmd[0] != '\0') {
