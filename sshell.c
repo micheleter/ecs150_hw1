@@ -13,10 +13,11 @@
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
 
-struct Command {
+struct Command
+{
   char *prefix;
   char *args[ARG_MAX + 2];
-  bool output_redir;
+  bool needs_output_redir;
   char *filename;
 } Command;
 
@@ -27,60 +28,90 @@ struct Command {
 //         s[len + 1] = '\0';
 // }
 
-struct Command *parseCommand(char *cmdStr) {
+struct Command *parseCommand(char *cmdStr)
+{
 
   struct Command *command = malloc(sizeof(struct Command));
-  command->output_redir = false;
+  command->needs_output_redir = false;
   char cmd[CMDLINE_MAX] = "";
   char *str;
   u_int i = 0;
   u_int j = 0;
-  bool hit_output_redir = false, hit_pipe = false;
+  bool hit_output_redir = false;
 
-  for (i = 0; i < strlen(cmdStr) + 1; i++) {
+  for (i = 0; i < strlen(cmdStr) + 1; i++)
+  {
     if (cmdStr[i] != ' ' &&
         cmdStr[i] != '\0' &&
-        cmdStr[i] != '>' &&
-        cmdStr[i] != '|') {
+        cmdStr[i] != '>')
+    {
 
       /* Normal char */
       char temp[2] = {cmdStr[i], '\0'};
       str = strcat(cmd, temp);
       printf("%s\n", str);
     }
-    else {
+    else
+    {
+      printf("got into else\n");
       /* Hit space, meta-char, or endl */
-      if (cmdStr[i] == '>') {
-        command->output_redir = true;
+      if (cmdStr[i] == ' ')
+      {
+        printf("got into space\n");
+        if (!hit_output_redir)
+        {
+          printf("got into add to args\n");
+          command->args[j] = malloc(sizeof(str) + 1);
+          strcpy(command->args[j], str);
+          printf("added\n");
+          // printf("%s\n", command->args[j]);
+        }
+        else
+        {
+          printf("read in space after meta\n");
+          continue;
+        }
+      }
+      else if (cmdStr[i] == '>')
+      {
+        printf("read in output redir\n");
+        command->needs_output_redir = true;
         hit_output_redir = true;
       }
-      else if (cmdStr[i] == '|') {
-        hit_pipe = true;
+      else if (cmdStr[i] == '\0')
+      {
+        if (hit_output_redir)
+        {
+          command->filename = malloc(sizeof(char *));
+          strcpy(command->filename, str);
+        }
+        else
+        {
+          command->args[j] = malloc(sizeof(str) + 1);
+          strcpy(command->args[j], str);
+        }
       }
 
-      if (hit_output_redir) {
-        command->filename = str;
-        hit_output_redir = false;
-        continue;
-      }
-      if (hit_pipe) {
-        continue;
-      }
-
-
-      if (cmd[0] != '\0') {
-        strcpy(command->args[j], str);
+      if (cmd[0] != '\0')
+      {
+        printf("clearing cmd\n");
         cmd[0] = '\0';
         printf("%s\n", command->args[j]);
         j++;
+        printf("cmd cleared and j inced\n");
       }
     }
   }
-  // exit(0);
+  command->args[j] = malloc(sizeof(char));
   strcpy(command->args[j], "\0");
-  command->prefix = command->args[0];
-  // if (command->output_redir)
-  // printf("%s\n", command->filename);
+  command->prefix = malloc(sizeof(char *));
+  strcpy(command->prefix, command->args[0]);
+  printf("%s\n", command->prefix);
+  if (command->needs_output_redir)
+  {
+    printf("%s\n", command->filename);
+  }
+  exit(0);
 
   return command;
 
@@ -102,8 +133,6 @@ struct Command *parseCommand(char *cmdStr) {
   // command->args[i] = NULL;
   //
   // return command;
-
-
 }
 
 void print_completion(char cmd[], int retval)
@@ -112,11 +141,13 @@ void print_completion(char cmd[], int retval)
   fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
 }
 
-int main(void) {
+int main(void)
+{
 
   char cmd[CMDLINE_MAX];
 
-  while (1) {
+  while (1)
+  {
     char *nl;
     char fxn[CMDLINE_MAX];
     int retval;
@@ -132,7 +163,8 @@ int main(void) {
     struct Command *command;
 
     /* Print command line if stdin is not provided by terminal */
-    if (!isatty(STDIN_FILENO)) {
+    if (!isatty(STDIN_FILENO))
+    {
       printf("%s", cmd);
       fflush(stdout);
     }
@@ -147,51 +179,64 @@ int main(void) {
     command = parseCommand(fxn);
 
     /* Builtin commands */
-    if (!strcmp(command->prefix, "exit")) {
+    if (!strcmp(command->prefix, "exit"))
+    {
       fprintf(stderr, "Bye...\n");
       print_completion(cmd, errno);
       break;
     }
-    else if (!strcmp(cmd, "pwd")) {
+    else if (!strcmp(cmd, "pwd"))
+    {
       char buf[CMDLINE_MAX];
       char *dir = getcwd(buf, (size_t)CMDLINE_MAX);
-      if (dir) {
+      if (dir)
+      {
         printf("%s\n", dir);
         print_completion(cmd, errno);
       }
-      else {
+      else
+      {
         perror("getcwd");
       }
     }
-    else if (!strcmp(command->prefix, "cd")) {
-      if (command->args[1] != NULL) {
+    else if (!strcmp(command->prefix, "cd"))
+    {
+      if (command->args[1] != NULL)
+      {
         retval = chdir(command->args[1]);
-        if (!retval) {
+        if (!retval)
+        {
           print_completion(cmd, retval);
         }
-        else {
+        else
+        {
           perror("chdir");
         }
       }
-      else {
+      else
+      {
         fprintf(stderr, "Null directory\n");
       }
     }
-    else {
+    else
+    {
       /* Regular command */
       pid = fork();
-      if (pid == 0) {
+      if (pid == 0)
+      {
         // Child
         execvp(command->prefix, command->args);
         perror("execvp");
         exit(1);
       }
-      else if (pid > 0) {
+      else if (pid > 0)
+      {
         // Parent
         waitpid(-1, &status, 0);
         print_completion(cmd, status);
       }
-      else {
+      else
+      {
         // Error
         perror("fork");
         exit(1);
