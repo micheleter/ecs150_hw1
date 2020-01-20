@@ -43,14 +43,19 @@ struct Command *parseCommand(char *cmdStr)
   {
     if (cmdStr[i] != ' ' &&
         cmdStr[i] != '\0' &&
+<<<<<<< HEAD
         cmdStr[i] != '>')
     {
+=======
+        cmdStr[i] != '>') {
+>>>>>>> ff93865d86441ce1131cdd1b3bd982ebe441db98
 
       /* Normal char */
       char temp[2] = {cmdStr[i], '\0'};
       str = strcat(cmd, temp);
       printf("%s\n", str);
     }
+<<<<<<< HEAD
     else
     {
       printf("got into else\n");
@@ -60,24 +65,41 @@ struct Command *parseCommand(char *cmdStr)
         printf("got into space\n");
         if (!hit_output_redir)
         {
+=======
+    else {
+      printf("got into else\n");
+      /* Hit space, meta-char, or endl */
+      if (cmdStr[i] == ' ') {
+        printf("got into space\n");
+        if (!hit_output_redir) {
+>>>>>>> ff93865d86441ce1131cdd1b3bd982ebe441db98
           printf("got into add to args\n");
           command->args[j] = malloc(sizeof(str) + 1);
           strcpy(command->args[j], str);
           printf("added\n");
           // printf("%s\n", command->args[j]);
         }
+<<<<<<< HEAD
         else
         {
+=======
+        else {
+>>>>>>> ff93865d86441ce1131cdd1b3bd982ebe441db98
           printf("read in space after meta\n");
           continue;
         }
       }
+<<<<<<< HEAD
       else if (cmdStr[i] == '>')
       {
+=======
+      else if (cmdStr[i] == '>') {
+>>>>>>> ff93865d86441ce1131cdd1b3bd982ebe441db98
         printf("read in output redir\n");
         command->needs_output_redir = true;
         hit_output_redir = true;
       }
+<<<<<<< HEAD
       else if (cmdStr[i] == '\0')
       {
         if (hit_output_redir)
@@ -87,13 +109,25 @@ struct Command *parseCommand(char *cmdStr)
         }
         else
         {
+=======
+      else if (cmdStr[i] == '\0') {
+        if (hit_output_redir) {
+          command->filename = malloc(sizeof(char*));
+          strcpy(command->filename, str);
+        }
+        else {
+>>>>>>> ff93865d86441ce1131cdd1b3bd982ebe441db98
           command->args[j] = malloc(sizeof(str) + 1);
           strcpy(command->args[j], str);
         }
       }
 
+<<<<<<< HEAD
       if (cmd[0] != '\0')
       {
+=======
+      if (cmd[0] != '\0') {
+>>>>>>> ff93865d86441ce1131cdd1b3bd982ebe441db98
         printf("clearing cmd\n");
         cmd[0] = '\0';
         printf("%s\n", command->args[j]);
@@ -104,11 +138,18 @@ struct Command *parseCommand(char *cmdStr)
   }
   command->args[j] = malloc(sizeof(char));
   strcpy(command->args[j], "\0");
+<<<<<<< HEAD
   command->prefix = malloc(sizeof(char *));
   strcpy(command->prefix, command->args[0]);
   printf("%s\n", command->prefix);
   if (command->needs_output_redir)
   {
+=======
+  command->prefix = malloc(sizeof(char*));
+  strcpy(command->prefix, command->args[0]);
+  printf("%s\n", command->prefix);
+  if (command->needs_output_redir) {
+>>>>>>> ff93865d86441ce1131cdd1b3bd982ebe441db98
     printf("%s\n", command->filename);
   }
   exit(0);
