@@ -47,7 +47,7 @@ struct Command *parseCommand(char *cmdStr) {
         // printf("got into space\n");
         if (!hit_output_redir) {
           // printf("got into add to args\n");
-          command->args[j] = malloc(sizeof(str) + 1);
+          command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
           // command->args[j] = str;
           // printf("added\n");
@@ -72,7 +72,7 @@ struct Command *parseCommand(char *cmdStr) {
         }
         else {
           // printf("no output redir\n");
-          command->args[j] = malloc(sizeof(str) + 1);
+          command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
           // command->args[j] = str;
         }
@@ -87,8 +87,7 @@ struct Command *parseCommand(char *cmdStr) {
       }
     }
   }
-  command->args[j] = malloc(sizeof(char));
-  strcpy(command->args[j], "\0");
+
   command->prefix = malloc(sizeof(char*));
   strcpy(command->prefix, command->args[0]);
   // printf("%s\n", command->prefix);
