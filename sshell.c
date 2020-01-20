@@ -20,13 +20,6 @@ struct Command {
   char *filename;
 } Command;
 
-// void append(char *s, char c)
-// {
-//         int len = strlen(s);
-//         s[len] = c;
-//         s[len + 1] = '\0';
-// }
-
 struct Command *parseCommand(char *cmdStr) {
 
   struct Command *command = malloc(sizeof(struct Command));
@@ -56,6 +49,7 @@ struct Command *parseCommand(char *cmdStr) {
           // printf("got into add to args\n");
           command->args[j] = malloc(sizeof(str) + 1);
           strcpy(command->args[j], str);
+          // command->args[j] = str;
           // printf("added\n");
           // printf("%s\n", command->args[j]);
         }
@@ -70,13 +64,17 @@ struct Command *parseCommand(char *cmdStr) {
         hit_output_redir = true;
       }
       else if (cmdStr[i] == '\0') {
+        // printf("got into endl\n");
         if (hit_output_redir) {
           command->filename = malloc(sizeof(char*));
           strcpy(command->filename, str);
+          // command->filename = str;
         }
         else {
+          // printf("no output redir\n");
           command->args[j] = malloc(sizeof(str) + 1);
           strcpy(command->args[j], str);
+          // command->args[j] = str;
         }
       }
 
@@ -97,30 +95,12 @@ struct Command *parseCommand(char *cmdStr) {
   // if (command->needs_output_redir) {
   //   printf("%s\n", command->filename);
   // }
+  // if (command->args[1]) {
+  //   printf("%s\n", command->args[1]);
+  // }
   // exit(0);
 
   return command;
-
-  /* Original method - works */
-
-  // struct Command *command = malloc(sizeof(struct Command));
-  //
-  // int i = 1;
-  // char *cur = strtok(cmdStr, " ");
-  // command->args[0] = cur;
-  // command->prefix = cur;
-  //
-  // while (cur)
-  // {
-  //   cur = strtok(NULL, " ");
-  //   command->args[i] = cur;
-  //   i++;
-  // }
-  // command->args[i] = NULL;
-  //
-  // return command;
-
-
 }
 
 void print_completion(char cmd[], int retval)
