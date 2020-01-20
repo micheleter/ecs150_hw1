@@ -16,7 +16,7 @@
 struct Command {
   char *prefix;
   char *args[ARG_MAX + 2];
-  bool output_redir;
+  bool needs_output_redir;
   char *filename;
 } Command;
 
@@ -30,18 +30,17 @@ struct Command {
 struct Command *parseCommand(char *cmdStr) {
 
   struct Command *command = malloc(sizeof(struct Command));
-  command->output_redir = false;
+  command->needs_output_redir = false;
   char cmd[CMDLINE_MAX] = "";
   char *str;
   u_int i = 0;
   u_int j = 0;
-  bool hit_output_redir = false, hit_pipe = false;
+  bool hit_output_redir = false;
 
   for (i = 0; i < strlen(cmdStr) + 1; i++) {
     if (cmdStr[i] != ' ' &&
         cmdStr[i] != '\0' &&
-        cmdStr[i] != '>' &&
-        cmdStr[i] != '|') {
+        cmdStr[i] != '>') {
 
       /* Normal char */
       char temp[2] = {cmdStr[i], '\0'};
@@ -49,38 +48,54 @@ struct Command *parseCommand(char *cmdStr) {
       printf("%s\n", str);
     }
     else {
+      printf("got into else\n");
       /* Hit space, meta-char, or endl */
-      if (cmdStr[i] == '>') {
-        command->output_redir = true;
+      if (cmdStr[i] == ' ') {
+        printf("got into space\n");
+        if (!hit_output_redir) {
+          printf("got into add to args\n");
+          command->args[j] = malloc(sizeof(str) + 1);
+          strcpy(command->args[j], str);
+          printf("added\n");
+          // printf("%s\n", command->args[j]);
+        }
+        else {
+          printf("read in space after meta\n");
+          continue;
+        }
+      }
+      else if (cmdStr[i] == '>') {
+        printf("read in output redir\n");
+        command->needs_output_redir = true;
         hit_output_redir = true;
       }
-      else if (cmdStr[i] == '|') {
-        hit_pipe = true;
-      }
 
-      if (hit_output_redir) {
-        command->filename = str;
-        hit_output_redir = false;
-        continue;
+      if (hit_output_redir && cmdStr[i] == '\0') {
+        printf("assigning filename\n");
+        command->filename = malloc(sizeof(char*));
+        strcpy(command->filename, str);
+        printf("assigned filename\n");
+        // hit_output_redir = false;
       }
-      if (hit_pipe) {
-        continue;
-      }
-
 
       if (cmd[0] != '\0') {
-        strcpy(command->args[j], str);
+        printf("clearing cmd\n");
         cmd[0] = '\0';
         printf("%s\n", command->args[j]);
         j++;
+        printf("cmd cleared and j inced\n");
       }
     }
   }
-  // exit(0);
+  command->args[j] = malloc(sizeof(char));
   strcpy(command->args[j], "\0");
-  command->prefix = command->args[0];
-  // if (command->output_redir)
-  // printf("%s\n", command->filename);
+  command->prefix = malloc(sizeof(char*));
+  strcpy(command->prefix, command->args[0]);
+  printf("%s\n", command->prefix);
+  if (command->needs_output_redir) {
+    printf("%s\n", command->filename);
+  }
+  exit(0);
 
   return command;
 
