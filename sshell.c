@@ -34,78 +34,82 @@ struct Command *parseCommand(char *cmdStr)
 
   for (i = 0; i < strlen(cmdStr) + 1; i++)
   {
-    if (cmdStr[i] != ' ' && cmdStr[i] != '\0' && cmdStr[i] != '>')
+    if (cmdStr[i] != ' ' &&
+        cmdStr[i] != '\0' &&
+        cmdStr[i] != '>')
     {
+
       /* Normal char */
       char temp[2] = {cmdStr[i], '\0'};
       str = strcat(cmd, temp);
-      printf("%s\n", str);
+      // printf("%s\n", str);
     }
     else
     {
-      printf("got into else\n");
+      // printf("got into else\n");
       /* Hit space, meta-char, or endl */
       if (cmdStr[i] == ' ')
       {
-        printf("got into space\n");
+        // printf("got into space\n");
         if (!hit_output_redir)
         {
-          printf("got into add to args\n");
+          // printf("got into add to args\n");
           command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
-          printf("added\n");
+          // command->args[j] = str;
+          // printf("added\n");
           // printf("%s\n", command->args[j]);
         }
         else
         {
-          printf("read in space after meta\n");
+          // printf("read in space after meta\n");
           continue;
         }
       }
       else if (cmdStr[i] == '>')
       {
-        printf("read in output redir\n");
+        // printf("read in output redir\n");
         command->needs_output_redir = true;
         hit_output_redir = true;
       }
       else if (cmdStr[i] == '\0')
       {
-        printf("got into endl\n");
+        // printf("got into endl\n");
         if (hit_output_redir)
         {
           command->filename = malloc(sizeof(char *));
           strcpy(command->filename, str);
-          printf("file added\n");
+          // command->filename = str;
         }
         else
         {
-          printf("no output redir\n");
-          command->args[j] = malloc(sizeof(char *));
+          // printf("no output redir\n");
+          command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
+          // command->args[j] = str;
         }
       }
 
       if (cmd[0] != '\0')
       {
-        printf("clearing cmd\n");
+        // printf("clearing cmd\n");
         cmd[0] = '\0';
         // printf("%s\n", command->args[j]);
         j++;
-        printf("cmd cleared and j inced\n");
+        // printf("cmd cleared and j inced\n");
       }
     }
   }
+
   command->prefix = malloc(sizeof(char *));
   strcpy(command->prefix, command->args[0]);
-  printf("%s\n", command->prefix);
-  if (command->needs_output_redir)
-  {
-    printf("%s\n", command->filename);
-  }
-  if (command->args[1])
-  {
-    printf("%s\n", command->args[1]);
-  }
+  // printf("%s\n", command->prefix);
+  // if (command->needs_output_redir) {
+  //   printf("%s\n", command->filename);
+  // }
+  // if (command->args[1]) {
+  //   printf("%s\n", command->args[1]);
+  // }
   // exit(0);
 
   return command;
@@ -128,6 +132,7 @@ int main(void)
     char fxn[CMDLINE_MAX];
     int retval;
     int status;
+    int fd;
     pid_t pid;
 
     /* Print prompt */
@@ -201,6 +206,13 @@ int main(void)
       if (pid == 0)
       {
         // Child
+        if (command->needs_output_redir)
+        {
+          strcat(command->filename, ".txt");
+          fd = open(command->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
+          dup2(fd, STDOUT_FILENO);
+          close(fd);
+        }
         execvp(command->prefix, command->args);
         perror("execvp");
         exit(1);

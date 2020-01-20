@@ -1,0 +1,7 @@
+file.txt
+main.o
+Makefile
+README.md
+sshell
+sshell.c
+test.txt
