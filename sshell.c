@@ -21,6 +21,7 @@ struct Command
   char *filename;
 } Command;
 
+<<<<<<< HEAD
 // void append(char *s, char c)
 // {
 //         int len = strlen(s);
@@ -30,6 +31,9 @@ struct Command
 
 struct Command *parseCommand(char *cmdStr)
 {
+=======
+struct Command *parseCommand(char *cmdStr) {
+>>>>>>> bc7fc00a3fe5e819aac6ac5702353a79e8c86485
 
   struct Command *command = malloc(sizeof(struct Command));
   command->needs_output_redir = false;
@@ -63,6 +67,7 @@ struct Command *parseCommand(char *cmdStr)
           // printf("got into add to args\n");
           command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
+          // command->args[j] = str;
           // printf("added\n");
           // printf("%s\n", command->args[j]);
         }
@@ -78,17 +83,32 @@ struct Command *parseCommand(char *cmdStr)
         command->needs_output_redir = true;
         hit_output_redir = true;
       }
+<<<<<<< HEAD
       else if (cmdStr[i] == '\0')
       {
         if (hit_output_redir)
         {
           command->filename = malloc(sizeof(char *));
+=======
+      else if (cmdStr[i] == '\0') {
+        // printf("got into endl\n");
+        if (hit_output_redir) {
+          command->filename = malloc(sizeof(char*));
+>>>>>>> bc7fc00a3fe5e819aac6ac5702353a79e8c86485
           strcpy(command->filename, str);
+          // command->filename = str;
         }
+<<<<<<< HEAD
         else
         {
           command->args[j] = malloc(sizeof(str));
+=======
+        else {
+          // printf("no output redir\n");
+          command->args[j] = malloc(sizeof(str) + 1);
+>>>>>>> bc7fc00a3fe5e819aac6ac5702353a79e8c86485
           strcpy(command->args[j], str);
+          // command->args[j] = str;
         }
       }
 
@@ -110,6 +130,9 @@ struct Command *parseCommand(char *cmdStr)
   // printf("%s\n", command->prefix);
   // if (command->needs_output_redir) {
   //   printf("%s\n", command->filename);
+  // }
+  // if (command->args[1]) {
+  //   printf("%s\n", command->args[1]);
   // }
   // exit(0);
 
