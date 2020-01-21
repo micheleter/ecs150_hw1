@@ -24,6 +24,18 @@ struct Command
 
 char *trim(char *str)
 {
+  printf("TRIM\n");
+  int len = strlen(str);
+
+  if (str[0] == ' ')
+  {
+    memmove(str, str + 1, len);
+  }
+  else if (str[len - 1] == ' ')
+  {
+    str[len - 1] = '\0';
+  }
+  return str;
 }
 
 struct Command *parseCommand(char *cmdStr)
@@ -91,7 +103,6 @@ struct Command *parseCommand(char *cmdStr)
           // printf("no output redir\n");
           command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
-          // command->args[j] = str;
         }
       }
 
@@ -170,11 +181,11 @@ int main(void)
 
     while (tok)
     {
+      tok = trim(tok);
       cmdStrings[cur_job] = malloc(sizeof(tok));
       strcpy(cmdStrings[cur_job], tok);
-      cmdStrings[cur_job] = trim(cmdStrings[cur_job]);
+      printf("%s\n", cmdStrings[cur_job]);
 
-      // printf("%s\n", cmdStrings[cur_job]);
       tok = strtok(NULL, "|");
       cur_job++;
     }
