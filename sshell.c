@@ -24,7 +24,6 @@ struct Command
 
 char *trim(char *str)
 {
-  printf("TRIM\n");
   int len = strlen(str);
 
   if (str[0] == ' ')
@@ -147,7 +146,7 @@ int main(void)
     char *nl;
     char fxn[CMDLINE_MAX];
     char *cmdStrings[CMDS_MAX];
-    // struct Command *commands[CMDS_MAX];
+    struct Command *commands[CMDS_MAX];
     int retval;
     int status;
     int fd;
@@ -184,13 +183,16 @@ int main(void)
       tok = trim(tok);
       cmdStrings[cur_job] = malloc(sizeof(tok));
       strcpy(cmdStrings[cur_job], tok);
-      printf("%s\n", cmdStrings[cur_job]);
-
+      commands[cur_job] = malloc(sizeof(struct Command *));
+      commands[cur_job] = parseCommand(cmdStrings[cur_job]);
+      printf("%s\n", commands[cur_job]->prefix);
+      // printf("BAD\n");
       tok = strtok(NULL, "|");
       cur_job++;
     }
+
     exit(0);
-    command = parseCommand(fxn);
+    command = parseCommand(cmd);
 
     /* Builtin commands */
     if (!strcmp(command->prefix, "exit"))
