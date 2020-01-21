@@ -185,14 +185,9 @@ int main(void)
       strcpy(cmdStrings[cur_job], tok);
       commands[cur_job] = malloc(sizeof(struct Command *));
       commands[cur_job] = parseCommand(cmdStrings[cur_job]);
-      printf("%s\n", commands[cur_job]->prefix);
-      // printf("BAD\n");
       tok = strtok(NULL, "|");
       cur_job++;
     }
-
-    exit(0);
-    command = parseCommand(cmd);
 
     /* Builtin commands */
     if (!strcmp(command->prefix, "exit"))
