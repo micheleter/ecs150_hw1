@@ -12,6 +12,7 @@
 
 #define CMDLINE_MAX 512
 #define ARG_MAX 16
+#define CMDS_MAX 4
 
 struct Command
 {
@@ -20,6 +21,10 @@ struct Command
   bool needs_output_redir;
   char *filename;
 } Command;
+
+char *trim(char *str)
+{
+}
 
 struct Command *parseCommand(char *cmdStr)
 {
@@ -130,6 +135,8 @@ int main(void)
   {
     char *nl;
     char fxn[CMDLINE_MAX];
+    char *cmdStrings[CMDS_MAX];
+    // struct Command *commands[CMDS_MAX];
     int retval;
     int status;
     int fd;
@@ -157,6 +164,21 @@ int main(void)
 
     /* Create copy of 'cmd' */
     strcpy(fxn, cmd);
+
+    int cur_job = 0;
+    char *tok = strtok(fxn, "|");
+
+    while (tok)
+    {
+      cmdStrings[cur_job] = malloc(sizeof(tok));
+      strcpy(cmdStrings[cur_job], tok);
+      cmdStrings[cur_job] = trim(cmdStrings[cur_job]);
+
+      // printf("%s\n", cmdStrings[cur_job]);
+      tok = strtok(NULL, "|");
+      cur_job++;
+    }
+    exit(0);
     command = parseCommand(fxn);
 
     /* Builtin commands */
