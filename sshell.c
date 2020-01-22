@@ -58,7 +58,7 @@ struct Command *parseCommand(char *cmdStr)
       /* Normal char */
       char temp[2] = {cmdStr[i], '\0'};
       str = strcat(cmd, temp);
-      // printf("%s\n", str);
+      printf("%s\n", str);
     }
     else
     {
@@ -66,36 +66,41 @@ struct Command *parseCommand(char *cmdStr)
       /* Hit space, meta-char, or endl */
       if (cmdStr[i] == ' ')
       {
-        // printf("got into space\n");
+        printf("got into space\n");
         if (!hit_output_redir)
         {
-          // printf("got into add to args\n");
+          printf("got into add to args\n");
           command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
-          // command->args[j] = str;
-          // printf("added\n");
+          printf("added\n");
           // printf("%s\n", command->args[j]);
         }
         else
         {
-          // printf("read in space after meta\n");
+          printf("read in space after meta\n");
           continue;
         }
       }
       else if (cmdStr[i] == '>')
       {
-        // printf("read in output redir\n");
+        if (cmdStr[i - 1] != ' ')
+        {
+          command->args[j] = malloc(sizeof(str));
+          strcpy(command->args[j], str);
+        }
+        printf("read in output redir\n");
         command->needs_output_redir = true;
         hit_output_redir = true;
       }
       else if (cmdStr[i] == '\0')
       {
-        // printf("got into endl\n");
+        printf("got into endl\n");
         if (hit_output_redir)
         {
+          printf("saving filename\n");
           command->filename = malloc(sizeof(char *));
           strcpy(command->filename, str);
-          // command->filename = str;
+          printf("filename saved\n");
         }
         else
         {
@@ -107,21 +112,25 @@ struct Command *parseCommand(char *cmdStr)
 
       if (cmd[0] != '\0')
       {
-        // printf("clearing cmd\n");
+        printf("clearing cmd\n");
         cmd[0] = '\0';
         // printf("%s\n", command->args[j]);
         j++;
-        // printf("cmd cleared and j inced\n");
+        printf("cmd cleared and j inced\n");
       }
     }
   }
+  printf("exited forloop\n");
+  printf("%s\n", command->args[0]);
+  printf("command args 0\n");
 
   command->prefix = malloc(sizeof(char *));
   strcpy(command->prefix, command->args[0]);
-  // printf("%s\n", command->prefix);
-  // if (command->needs_output_redir) {
-  //   printf("%s\n", command->filename);
-  // }
+  printf("%s\n", command->prefix);
+  if (command->needs_output_redir)
+  {
+    printf("%s\n", command->filename);
+  }
   // if (command->args[1]) {
   //   printf("%s\n", command->args[1]);
   // }
@@ -145,8 +154,8 @@ int main(void)
   {
     char *nl;
     char fxn[CMDLINE_MAX];
-    char *cmdStrings[CMDS_MAX];
-    struct Command *commands[CMDS_MAX];
+    // char *cmdStrings[CMDS_MAX];
+    // struct Command *commands[CMDS_MAX];
     int retval;
     int status;
     int fd;
@@ -175,19 +184,21 @@ int main(void)
     /* Create copy of 'cmd' */
     strcpy(fxn, cmd);
 
-    int cur_job = 0;
-    char *tok = strtok(fxn, "|");
+    // int cur_job = 0;
+    // char *tok = strtok(fxn, "|");
 
-    while (tok)
-    {
-      tok = trim(tok);
-      cmdStrings[cur_job] = malloc(sizeof(tok));
-      strcpy(cmdStrings[cur_job], tok);
-      commands[cur_job] = malloc(sizeof(struct Command *));
-      commands[cur_job] = parseCommand(cmdStrings[cur_job]);
-      tok = strtok(NULL, "|");
-      cur_job++;
-    }
+    // while (tok)
+    // {
+    //   tok = trim(tok);
+    //   cmdStrings[cur_job] = malloc(sizeof(tok));
+    //   strcpy(cmdStrings[cur_job], tok);
+    //   commands[cur_job] = malloc(sizeof(struct Command *));
+    //   commands[cur_job] = parseCommand(cmdStrings[cur_job]);
+    //   tok = strtok(NULL, "|");
+    //   cur_job++;
+    // }
+
+    command = parseCommand(fxn);
 
     /* Builtin commands */
     if (!strcmp(command->prefix, "exit"))
