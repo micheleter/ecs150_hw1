@@ -123,10 +123,10 @@ struct Command *parseCommand(char *cmdStr)
   command->prefix = malloc(sizeof(char *));
   strcpy(command->prefix, command->args[0]);
   // printf("%s\n", command->prefix);
-  // if (command->needs_output_redir)
-  // {
-  // printf("%s\n", command->filename);
-  // }
+  if (command->needs_output_redir)
+  {
+    printf("%s\n", command->filename);
+  }
   // if (command->args[1]) {
   //   printf("%s\n", command->args[1]);
   // }
@@ -139,6 +139,44 @@ void print_completion(char cmd[], int retval)
 {
   // Print completion message after cmd is executed
   fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
+}
+
+int exitBuiltIn()
+{
+  fprintf(stderr, "Bye...\n");
+  return 0;
+}
+
+int cdBuiltIn(char *dir)
+{
+  int retval = 0;
+  if (dir)
+  {
+    int exitVal = chdir(dir);
+    if (exitVal != 0)
+    {
+      retval = 1;
+      fprintf(stderr, "Error: no such directory\n");
+    }
+  }
+  return retval;
+}
+
+int pwdBuiltIn()
+{
+  int retval = 0;
+  char buf[CMDLINE_MAX];
+  char *dir = getcwd(buf, (size_t)CMDLINE_MAX);
+  if (dir)
+  {
+    printf("%s\n", dir);
+  }
+  else
+  {
+    retval = 1;
+    perror("getcwd");
+  }
+  return retval;
 }
 
 int main(void)
@@ -155,6 +193,7 @@ int main(void)
     int retval;
     int status;
     int fd;
+    // int cur_job = 0;
     pid_t pid;
 
     /* Print prompt */
@@ -180,7 +219,6 @@ int main(void)
     /* Create copy of 'cmd' */
     strcpy(fxn, cmd);
 
-    // int cur_job = 0;
     // char *tok = strtok(fxn, "|");
 
     // while (tok)
@@ -197,44 +235,21 @@ int main(void)
     command = parseCommand(fxn);
 
     /* Builtin commands */
-    if (!strcmp(command->prefix, "exit"))
+    if (!strcmp(cmd, "exit"))
     {
-      fprintf(stderr, "Bye...\n");
-      print_completion(cmd, errno);
+      retval = exitBuiltIn();
+      print_completion(cmd, retval);
       break;
     }
     else if (!strcmp(cmd, "pwd"))
     {
-      char buf[CMDLINE_MAX];
-      char *dir = getcwd(buf, (size_t)CMDLINE_MAX);
-      if (dir)
-      {
-        printf("%s\n", dir);
-        print_completion(cmd, errno);
-      }
-      else
-      {
-        perror("getcwd");
-      }
+      retval = pwdBuiltIn();
+      print_completion(cmd, retval);
     }
     else if (!strcmp(command->prefix, "cd"))
     {
-      if (command->args[1] != NULL)
-      {
-        retval = chdir(command->args[1]);
-        if (!retval)
-        {
-          print_completion(cmd, retval);
-        }
-        else
-        {
-          perror("chdir");
-        }
-      }
-      else
-      {
-        fprintf(stderr, "Null directory\n");
-      }
+      retval = cdBuiltIn(command->args[1]);
+      print_completion(cmd, retval);
     }
     else
     {
@@ -245,10 +260,17 @@ int main(void)
         // Child
         if (command->needs_output_redir)
         {
-          strcat(command->filename, ".txt");
-          fd = open(command->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
-          dup2(fd, STDOUT_FILENO);
-          close(fd);
+          if (command->filename != NULL)
+          {
+            strcat(command->filename, ".txt");
+            fd = open(command->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
+            dup2(fd, STDOUT_FILENO);
+            close(fd);
+          }
+          else
+          {
+            fprintf(stderr, "Error: no output file\n");
+          }
         }
         execvp(command->prefix, command->args);
         perror("execvp");
@@ -268,6 +290,5 @@ int main(void)
       }
     }
   }
-
   return EXIT_SUCCESS;
 }
