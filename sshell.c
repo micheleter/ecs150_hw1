@@ -179,6 +179,80 @@ int pwdBuiltIn()
   return retval;
 }
 
+void executeCommand(struct Command **commands, char* cmd, int numCommands) {
+  int status;
+  int fd;
+  int pfd[2];
+  pid_t pid[4];
+
+  /* Regular command */
+  pipe(pfd);
+  pid[0] = fork();
+  if (pid == 0) {
+    // Child
+    if (commands[2] != NULL) {
+      pipe(pfd);
+      pid[1] = fork();
+      if (commands[1] != NULL) {
+        pipe(pfd);
+        pid[2] = fork();
+        if (commands[0] != NULL) {
+          pipe(pfd);
+          pid[3] = fork();
+          if (pid[3] == 0) {
+            // Child
+            close(pfd[0]);
+            dup2(pfd[1], STDOUT_FILENO);
+            close(pfd[1]);
+            execvp(commands[0]->prefix, commands[0]->args);
+            perror("execvp");
+            exit(1);
+          }
+          else if (pid[3] > 0) {
+            // Parent
+          }
+          else {
+            // Error
+            perror("fork");
+            exit(1);
+          }
+
+        }
+      }
+    }
+
+
+    if (commands[numCommands-1]->needs_output_redir)
+    {
+      if (commands[numCommands-1]->filename != NULL)
+      {
+        strcat(commands[numCommands-1]->filename, ".txt");
+        fd = open(commands[numCommands-1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
+        dup2(fd, STDOUT_FILENO);
+        close(fd);
+      }
+      else
+      {
+        fprintf(stderr, "Error: no output file\n");
+      }
+    }
+
+
+  }
+  else if (pid > 0)
+  {
+    // Parent
+    waitpid(-1, &status, 0);
+    print_completion(cmd, status);
+  }
+  else
+  {
+    // Error
+    perror("fork");
+    exit(1);
+  }
+}
+
 int main(void)
 {
 
@@ -188,13 +262,10 @@ int main(void)
   {
     char *nl;
     char fxn[CMDLINE_MAX];
-    // char *cmdStrings[CMDS_MAX];
-    // struct Command *commands[CMDS_MAX];
+    char *cmdStrings[CMDS_MAX];
+    struct Command *commands[CMDS_MAX];
     int retval;
-    int status;
-    int fd;
-    // int cur_job = 0;
-    pid_t pid;
+    int cur_job = 0;
 
     /* Print prompt */
     printf("sshell$ ");
@@ -219,20 +290,18 @@ int main(void)
     /* Create copy of 'cmd' */
     strcpy(fxn, cmd);
 
-    // char *tok = strtok(fxn, "|");
+    char *tok = strtok(fxn, "|");
 
-    // while (tok)
-    // {
-    //   tok = trim(tok);
-    //   cmdStrings[cur_job] = malloc(sizeof(tok));
-    //   strcpy(cmdStrings[cur_job], tok);
-    //   commands[cur_job] = malloc(sizeof(struct Command *));
-    //   commands[cur_job] = parseCommand(cmdStrings[cur_job]);
-    //   tok = strtok(NULL, "|");
-    //   cur_job++;
-    // }
-
-    command = parseCommand(fxn);
+    while (tok)
+    {
+      tok = trim(tok);
+      cmdStrings[cur_job] = malloc(sizeof(tok));
+      strcpy(cmdStrings[cur_job], tok);
+      commands[cur_job] = malloc(sizeof(struct Command *));
+      commands[cur_job] = parseCommand(cmdStrings[cur_job]);
+      tok = strtok(NULL, "|");
+      cur_job++;
+    }
 
     /* Builtin commands */
     if (!strcmp(cmd, "exit"))
@@ -246,49 +315,14 @@ int main(void)
       retval = pwdBuiltIn();
       print_completion(cmd, retval);
     }
-    else if (!strcmp(command->prefix, "cd"))
+    else if (!strcmp(commands[0]->prefix, "cd"))
     {
       retval = cdBuiltIn(command->args[1]);
       print_completion(cmd, retval);
     }
-    else
-    {
-      /* Regular command */
-      pid = fork();
-      if (pid == 0)
-      {
-        // Child
-        if (command->needs_output_redir)
-        {
-          if (command->filename != NULL)
-          {
-            strcat(command->filename, ".txt");
-            fd = open(command->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
-            dup2(fd, STDOUT_FILENO);
-            close(fd);
-          }
-          else
-          {
-            fprintf(stderr, "Error: no output file\n");
-          }
-        }
-        execvp(command->prefix, command->args);
-        perror("execvp");
-        exit(1);
-      }
-      else if (pid > 0)
-      {
-        // Parent
-        waitpid(-1, &status, 0);
-        print_completion(cmd, status);
-      }
-      else
-      {
-        // Error
-        perror("fork");
-        exit(1);
-      }
-    }
+
+    executeCommand(commands, cmd, cur_job);
+
   }
   return EXIT_SUCCESS;
 }
