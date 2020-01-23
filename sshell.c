@@ -24,15 +24,13 @@ struct Command
 
 char *trim(char *str)
 {
-  int len = strlen(str);
-
   if (str[0] == ' ')
   {
-    memmove(str, str + 1, len);
+    memmove(str, str + 1, strlen(str));
   }
-  else if (str[len - 1] == ' ')
+  if (str[strlen(str) - 1] == ' ')
   {
-    str[len - 1] = '\0';
+    str[strlen(str) - 1] = '\0';
   }
   return str;
 }
@@ -178,7 +176,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   pid_t wpid;
 
   /* Regular command */
-  /* Create pipe if neccessary */
+  /* Create pipes if neccessary */
   if (numCommands > 1)
   {
     printf("piped once\n");
@@ -201,20 +199,90 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
     if (numCommands >= 2)
     {
       pid[1] = fork();
-      if (pid[1] == 0)
+      if (pid[1] > 0)
+      {
+        // Parent
+        close(pfd1[1]);
+        if (numCommands >= 3)
+        {
+          pid[2] = fork();
+          if (pid[2] > 0)
+          {
+            // Parent
+            close(pfd2[1]);
+            if (numCommands >= 4)
+            {
+              pid[3] = fork();
+              if (pid[3] > 0)
+              {
+                // Parent
+                close(pfd3[1]);
+              }
+              else if (pid[3] == 0)
+              {
+                // Child
+                close(pfd1[0]);
+                close(pfd1[1]);
+                close(pfd2[0]);
+                close(pfd2[1]);
+
+                close(pfd3[1]);
+                dup2(pfd3[0], STDIN_FILENO);
+                close(pfd3[0]);
+                execvp(commands[3]->prefix, commands[3]->args);
+                perror("execvp");
+                exit(1);
+              }
+              else
+              {
+                // Error
+                perror("fork");
+                exit(1);
+              }
+            }
+          }
+          else if (pid[2] == 0)
+          {
+            // Child
+            close(pfd1[0]);
+            close(pfd1[1]);
+
+            close(pfd2[1]);
+            dup2(pfd2[0], STDIN_FILENO);
+            close(pfd2[0]);
+            if (numCommands > 3)
+            {
+              close(pfd3[0]);
+              dup2(pfd3[1], STDOUT_FILENO);
+              close(pfd3[1]);
+            }
+            execvp(commands[2]->prefix, commands[2]->args);
+            perror("execvp");
+            exit(1);
+          }
+          else
+          {
+            // Error
+            perror("fork");
+            exit(1);
+          }
+        }
+      }
+      else if (pid[1] == 0)
       {
         // Child 2
         close(pfd1[1]);
         dup2(pfd1[0], STDIN_FILENO);
         close(pfd1[0]);
+        if (numCommands > 2)
+        {
+          close(pfd2[0]);
+          dup2(pfd2[1], STDOUT_FILENO);
+          close(pfd2[1]);
+        }
         execvp(commands[1]->prefix, commands[1]->args);
         perror("execvp");
         exit(1);
-      }
-      else if (pid[1] > 0)
-      {
-        // Parent
-        close(pfd1[1]);
       }
       else
       {
