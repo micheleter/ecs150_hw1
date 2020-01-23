@@ -200,14 +200,22 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
 {
   int status;
   // int fd;
-  int pfd[2];
+  int pfd1[2];
+  int pfd2[2];
+  int pfd3[2];
   pid_t pid[4];
 
   /* Regular command */
   /* Create pipe if neccessary */
   if (numCommands > 1)
   {
-    pipe(pfd);
+    pipe(pfd1);
+    if (numCommands > 2) {
+      pipe(pfd2);
+      if (numCommands > 3) {
+        pipe(pfd3);
+      }
+    }
   }
 
   pid[0] = fork(); // Init and child
@@ -216,9 +224,9 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
     /* Piping */
     if (numCommands >= 2)
     {
-      close(pfd[0]);
-      dup2(pfd[1], STDOUT_FILENO);
-      close(pfd[1]);
+      close(pfd1[0]);
+      dup2(pfd1[1], STDOUT_FILENO);
+      close(pfd1[1]);
       execvp(commands[0]->prefix, commands[0]->args);
       perror("execvp");
       exit(1);
@@ -235,48 +243,25 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
       pid[1] = fork();
       if (pid[1] == 0) {
         // Child 2
-        dup2(pfd[1], STDOUT_FILENO);
-        close(pfd[1]);
-        dup2(pfd[0], STDIN_FILENO);
-        close(pfd[0]);
+        close(pfd1[1]);
+        dup2(pfd1[0], STDIN_FILENO);
+        close(pfd1[0]);
         execvp(commands[1]->prefix, commands[1]->args);
         perror("execvp");
         exit(1);
       }
       else if (pid[1] > 0) {
         // Parent 1
-        if (numCommands >= 3) {
-          fprintf(stderr, "err\n");
-          pid[2] = fork();
-          
-          if (pid[2] == 0) {
-            // Child 3
-            close(pfd[1]);
-            dup2(pfd[0], STDIN_FILENO);
-            close(pfd[0]);
-            execvp(commands[2]->prefix, commands[2]->args);
-            perror("execvp");
-            exit(1);
-          }
-      else if (pid[1] > 0) {
-        // Parent 1
-
+        close(pfd1[1]);
       }
-      else {
+      else 
+      {
         // Error
         perror("fork");
         exit(1);
       }
-    }  
-
-      }
-      else {
-        // Error
-        perror("fork");
-        exit(1);
-      }
-    }  
-    waitpid(-1, &status, 0);
+    }
+    waitpid(pid[1], &status, 0);
     print_completion(cmd, status);
   }
   else
