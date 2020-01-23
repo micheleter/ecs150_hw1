@@ -208,83 +208,50 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   if (numCommands > 1)
   {
     pipe(pfd);
-    // printf("should not show\n");
   }
 
   pid[0] = fork(); // Init and child
-  if (pid[0] == 0)
+  if (pid[0] == 0) // Child 1 executing
   {
-    // Child 1 executing
-
     /* Piping */
     if (numCommands >= 2)
     {
-      char buf[CMDLINE_MAX];
-
-      printf("%d\n", pfd[0]);
-      printf("%d\n", pfd[1]);
-      // close(pfd[0]);
-      printf("closed read\n");
+      close(pfd[0]);
       dup2(pfd[1], STDOUT_FILENO);
       close(pfd[1]);
-      fprintf(stderr, "dup2ed\n");
-      printf("hello");
-      fflush(stdout);
-      fprintf(stderr, "about to fork again\n");
-
-      // pipe(pfd);
-      pid[1] = fork();
-
-      if (pid[1] == 0)
-      {
-        // Child 2 executing
-        fprintf(stderr, "%d\n", pfd[0]);
-        fprintf(stderr, "%d\n", pfd[1]);
-        // close(pfd[1]);
-        fprintf(stderr, "closed write\n");
-        dup2(pfd[0], STDIN_FILENO);
-        fprintf(stderr, "dup2ed again\n");
-        close(pfd[0]);
-        fprintf(stderr, "closed read2\n");
-        read(STDIN_FILENO, buf, CMDLINE_MAX);
-        fprintf(stderr, "%s\n", buf);
-
-        // execvp(commands[1]->prefix, commands[1]->args);
-        // perror("execvp");
-        exit(1);
-      }
-      else if (pid[1] > 0)
-      {
-        // Parent executing
-        // waitpid(-1, &status, 0);
-        wait(NULL);
-        // wait(NULL);
-        // print_completion(cmd, status);
-        printf("does this work?\n");
-      }
-      else
-      {
-        // Error
-        perror("fork");
-        exit(1);
-      }
-
-      // execvp(commands[0]->prefix, commands[0]->args);
-      // perror("execvp");
-      // exit(1);
+      execvp(commands[0]->prefix, commands[0]->args);
+      perror("execvp");
+      exit(1);
     }
 
     /* Not piping */
-    // printf("not piping\n");
-    // printf("%s\n", commands[0]->prefix);
-    // exit(0);
     execvp(commands[0]->prefix, commands[0]->args);
     perror("execvp");
     exit(1);
   }
-  else if (pid[0] > 0)
+  else if (pid[0] > 0) // Parent 1
   {
-    // Parent
+    if (numCommands >= 2) {
+      pid[1] = fork();
+      if (pid[1] == 0) {
+        // Child 2
+        close(pfd[1]);
+        dup2(pfd[0], STDIN_FILENO);
+        close(pfd[0]);
+        execvp(commands[1]->prefix, commands[1]->args);
+        perror("execvp");
+        exit(1);
+      }
+      else if (pid[1] > 0) {
+        // Parent 1
+        
+      }
+      else {
+        // Error
+        perror("fork");
+        exit(1);
+      }
+    }
     waitpid(-1, &status, 0);
     print_completion(cmd, status);
   }
@@ -369,9 +336,6 @@ int main(void)
 
     else
     {
-      // printf("gets in to regular command\n");
-      // printf("%d\n", cur_job);
-      // exit(0);
       executeCommand(commands, cmd, cur_job);
     }
   }
