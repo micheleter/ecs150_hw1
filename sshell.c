@@ -123,10 +123,10 @@ struct Command *parseCommand(char *cmdStr)
   command->prefix = malloc(sizeof(char *));
   strcpy(command->prefix, command->args[0]);
   // printf("%s\n", command->prefix);
-  if (command->needs_output_redir)
-  {
-    printf("%s\n", command->filename);
-  }
+  // if (command->needs_output_redir)
+  // {
+  //   printf("%s\n", command->filename);
+  // }
   // if (command->args[1]) {
   //   printf("%s\n", command->args[1]);
   // }
@@ -179,114 +179,107 @@ int pwdBuiltIn()
   return retval;
 }
 
-<<<<<<< HEAD
+// void outputRedirection() {
+//   if (commands[numCommands-1]->needs_output_redir)
+//   {
+//     if (commands[numCommands-1]->filename != NULL)
+//     {
+//       strcat(commands[numCommands-1]->filename, ".txt");
+//       fd = open(commands[numCommands-1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
+//       dup2(fd, STDOUT_FILENO);
+//       close(fd);
+//     }
+//     else
+//     {
+//       fprintf(stderr, "Error: no output file\n");
+//     }
+//   }
+// }
+
 void executeCommand(struct Command **commands, char *cmd, int numCommands)
 {
-=======
-void outputRedirection() {
-  if (commands[numCommands-1]->needs_output_redir)
-  {
-    if (commands[numCommands-1]->filename != NULL)
-    {
-      strcat(commands[numCommands-1]->filename, ".txt");
-      fd = open(commands[numCommands-1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
-      dup2(fd, STDOUT_FILENO);
-      close(fd);
-    }
-    else
-    {
-      fprintf(stderr, "Error: no output file\n");
-    }
-  }
-}
-
-void executeCommand(struct Command **commands, char* cmd, int numCommands) {
->>>>>>> refs/remotes/origin/master
   int status;
-  int fd;
+  // int fd;
   int pfd[2];
   pid_t pid[4];
 
   /* Regular command */
-<<<<<<< HEAD
-  pipe(pfd);
-  pid[0] = fork();
-  if (pid[0] == 0)
+  /* Create pipe if neccessary */
+  if (numCommands > 1)
   {
-    // Child
-    if (commands[2] != NULL)
-    {
-      pipe(pfd);
-      pid[1] = fork();
-      if (commands[1] != NULL)
-      {
-        pipe(pfd);
-        pid[2] = fork();
-        if (commands[0] != NULL)
-        {
-          pipe(pfd);
-          pid[3] = fork();
-                }
-      }
-    }
-
-    if (commands[numCommands - 1]->needs_output_redir)
-    {
-      if (commands[numCommands - 1]->filename != NULL)
-      {
-        strcat(commands[numCommands - 1]->filename, ".txt");
-        fd = open(commands[numCommands - 1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
-        dup2(fd, STDOUT_FILENO);
-        close(fd);
-=======
-  if (numCommands > 1) {
     pipe(pfd);
   }
 
   pid[0] = fork(); // Init and child
-  if (pid[0] == 0) {
-    // Child
+  if (pid[0] == 0)
+  {
+    // Child 1 executing
 
     /* Piping */
-    if (commands[1] != NULL) {
-      int pfd[2];
-      pipe(pfd);
-      pid[1] = fork(); // child and grandchild
+    if (numCommands >= 2)
+    {
+      char buf[CMDLINE_MAX];
 
-      if (pid[1] == 0) {
-        // Child
-        // exec command 0
-        close(pfd[0]);
-        dup2(pfd[1], STDOUT_FILENO);
-        close(pfd[1]);
-        execvp(commands[0]->prefix, commands[0]->args);
-        perror("execvp");
-        exit(1);
+      printf("%d\n", pfd[0]);
+      printf("%d\n", pfd[1]);
+      // close(pfd[0]);
+      printf("closed read\n");
+      dup2(pfd[1], STDOUT_FILENO);
+      close(pfd[1]);
+      fprintf(stderr, "dup2ed\n");
+      printf("hello");
+      fflush(stdout);
+      fprintf(stderr, "about to fork again\n");
 
-      }
-      else if (pid[1] > 0) {
-        // Parent
-        close(fd[1]);
+      // pipe(pfd);
+      pid[1] = fork();
+
+      if (pid[1] == 0)
+      {
+        // Child 2 executing
+        fprintf(stderr, "%d\n", pfd[0]);
+        fprintf(stderr, "%d\n", pfd[1]);
+        // close(pfd[1]);
+        fprintf(stderr, "closed write\n");
         dup2(pfd[0], STDIN_FILENO);
-        execvp(commands[1]->prefix, commands[1]->args);
-        perror("execvp");
+        fprintf(stderr, "dup2ed again\n");
+        close(pfd[0]);
+        fprintf(stderr, "closed read2\n");
+        read(STDIN_FILENO, buf, CMDLINE_MAX);
+        fprintf(stderr, "%s\n", buf);
+
+        // execvp(commands[1]->prefix, commands[1]->args);
+        // perror("execvp");
         exit(1);
->>>>>>> refs/remotes/origin/master
       }
-      else {
+      else if (pid[1] > 0)
+      {
+        // Parent executing
+        // waitpid(-1, &status, 0);
+        wait(NULL);
+        // wait(NULL);
+        // print_completion(cmd, status);
+        printf("does this work?\n");
+      }
+      else
+      {
         // Error
         perror("fork");
         exit(1);
       }
+
+      // execvp(commands[0]->prefix, commands[0]->args);
+      // perror("execvp");
+      // exit(1);
     }
-<<<<<<< HEAD
-=======
 
     /* Not piping */
+    // printf("not piping\n");
+    // printf("%s\n", commands[0]->prefix);
+    // exit(0);
     execvp(commands[0]->prefix, commands[0]->args);
     perror("execvp");
     exit(1);
->>>>>>> refs/remotes/origin/master
   }
   else if (pid[0] > 0)
   {
@@ -315,6 +308,7 @@ int main(void)
     struct Command *commands[CMDS_MAX];
     int retval;
     int cur_job = 0;
+    // bool regularCommand = true;
 
     /* Print prompt */
     printf("sshell$ ");
@@ -322,7 +316,7 @@ int main(void)
 
     /* Get command line */
     fgets(cmd, CMDLINE_MAX, stdin);
-    struct Command *command;
+    // struct Command *command;
 
     /* Print command line if stdin is not provided by terminal */
     if (!isatty(STDIN_FILENO))
@@ -363,14 +357,22 @@ int main(void)
     {
       retval = pwdBuiltIn();
       print_completion(cmd, retval);
+      // regularCommand = false;
     }
     else if (!strcmp(commands[0]->prefix, "cd"))
     {
-      retval = cdBuiltIn(command->args[1]);
+      retval = cdBuiltIn(commands[0]->args[1]);
       print_completion(cmd, retval);
+      // regularCommand = false;
     }
 
-    executeCommand(commands, cmd, cur_job);
+    else
+    {
+      // printf("gets in to regular command\n");
+      // printf("%d\n", cur_job);
+      // exit(0);
+      executeCommand(commands, cmd, cur_job);
+    }
   }
   return EXIT_SUCCESS;
 }
