@@ -235,6 +235,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
       pid[1] = fork();
       if (pid[1] == 0) {
         // Child 2
+        dup2(pfd[1], STDOUT_FILENO);
         close(pfd[1]);
         dup2(pfd[0], STDIN_FILENO);
         close(pfd[0]);
@@ -244,14 +245,37 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
       }
       else if (pid[1] > 0) {
         // Parent 1
-        
+        if (numCommands >= 3) {
+          fprintf(stderr, "err\n");
+          pid[2] = fork();
+          
+          if (pid[2] == 0) {
+            // Child 3
+            close(pfd[1]);
+            dup2(pfd[0], STDIN_FILENO);
+            close(pfd[0]);
+            execvp(commands[2]->prefix, commands[2]->args);
+            perror("execvp");
+            exit(1);
+          }
+      else if (pid[1] > 0) {
+        // Parent 1
+
       }
       else {
         // Error
         perror("fork");
         exit(1);
       }
-    }
+    }  
+
+      }
+      else {
+        // Error
+        perror("fork");
+        exit(1);
+      }
+    }  
     waitpid(-1, &status, 0);
     print_completion(cmd, status);
   }
