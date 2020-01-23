@@ -179,14 +179,36 @@ int pwdBuiltIn()
   return retval;
 }
 
+<<<<<<< HEAD
 void executeCommand(struct Command **commands, char *cmd, int numCommands)
 {
+=======
+void outputRedirection() {
+  if (commands[numCommands-1]->needs_output_redir)
+  {
+    if (commands[numCommands-1]->filename != NULL)
+    {
+      strcat(commands[numCommands-1]->filename, ".txt");
+      fd = open(commands[numCommands-1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
+    }
+    else
+    {
+      fprintf(stderr, "Error: no output file\n");
+    }
+  }
+}
+
+void executeCommand(struct Command **commands, char* cmd, int numCommands) {
+>>>>>>> refs/remotes/origin/master
   int status;
   int fd;
   int pfd[2];
   pid_t pid[4];
 
   /* Regular command */
+<<<<<<< HEAD
   pipe(pfd);
   pid[0] = fork();
   if (pid[0] == 0)
@@ -216,12 +238,55 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
         fd = open(commands[numCommands - 1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
         dup2(fd, STDOUT_FILENO);
         close(fd);
+=======
+  if (numCommands > 1) {
+    pipe(pfd);
+  }
+
+  pid[0] = fork(); // Init and child
+  if (pid[0] == 0) {
+    // Child
+
+    /* Piping */
+    if (commands[1] != NULL) {
+      int pfd[2];
+      pipe(pfd);
+      pid[1] = fork(); // child and grandchild
+
+      if (pid[1] == 0) {
+        // Child
+        // exec command 0
+        close(pfd[0]);
+        dup2(pfd[1], STDOUT_FILENO);
+        close(pfd[1]);
+        execvp(commands[0]->prefix, commands[0]->args);
+        perror("execvp");
+        exit(1);
+
       }
-      else
-      {
-        fprintf(stderr, "Error: no output file\n");
+      else if (pid[1] > 0) {
+        // Parent
+        close(fd[1]);
+        dup2(pfd[0], STDIN_FILENO);
+        execvp(commands[1]->prefix, commands[1]->args);
+        perror("execvp");
+        exit(1);
+>>>>>>> refs/remotes/origin/master
+      }
+      else {
+        // Error
+        perror("fork");
+        exit(1);
       }
     }
+<<<<<<< HEAD
+=======
+
+    /* Not piping */
+    execvp(commands[0]->prefix, commands[0]->args);
+    perror("execvp");
+    exit(1);
+>>>>>>> refs/remotes/origin/master
   }
   else if (pid[0] > 0)
   {
