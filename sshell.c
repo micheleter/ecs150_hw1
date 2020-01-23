@@ -208,6 +208,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   if (numCommands > 1)
   {
     pipe(pfd);
+    // printf("should not show\n");
   }
 
   pid[0] = fork(); // Init and child
