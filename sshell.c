@@ -206,7 +206,7 @@ void executeCommand(struct Command **commands, char* cmd, int numCommands) {
   /* Create pipe if neccessary */
   if (numCommands > 1) {
     pipe(pfd);
-    printf("should not show\n");
+    // printf("should not show\n");
   }
 
   pid[0] = fork(); // Init and child
@@ -215,14 +215,67 @@ void executeCommand(struct Command **commands, char* cmd, int numCommands) {
 
     /* Piping */
     if (numCommands == 2) {
-      printf("only one arg, should not show\n");
+      // printf("only one arg, should not show\n");
+      printf("about to exec in child 1\n");
+      printf("%d\n", pfd[0]);
+      printf("%d\n", pfd[1]);
       close(pfd[0]);
+      printf("closed read\n");
       dup2(pfd[1], STDOUT_FILENO);
+
       close(pfd[1]);
-      execvp(commands[0]->prefix, commands[0]->args);
-      perror("execvp");
-      exit(1);
+      fprintf(stderr, "dup2ed\n");
+      printf("hello\n");
+      fprintf(stderr, "helloo\n");
+
+      // execvp(commands[0]->prefix, commands[0]->args);
+      // perror("execvp");
+      // exit(1);
     }
+
+    if (numCommands == 2) {
+      // char* tmp[7];
+      // read(pfd[0], tmp, 7);
+      // exit(0);
+      fprintf(stderr, "about to fork again\n");
+      pipe(pfd);
+      pid[1] = fork();
+
+      if (pid[1] == 0) {
+        // Child 2 executing
+        fprintf(stderr, "testing\n");
+        fprintf(stderr, "%d\n", pfd[0]);
+        fprintf(stderr, "%d\n", pfd[1]);
+        close(pfd[1]);
+        fprintf(stderr, "closed write\n");
+
+        dup2(pfd[0], STDIN_FILENO);
+        fprintf(stderr, "dup2ed again\n");
+
+        close(pfd[0]);
+        fprintf(stderr, "closed read\n");
+        fprintf(stderr, "%s\n", commands[1]->prefix);
+        fprintf(stderr, "%s\n", commands[1]->args[2]);
+        execvp(commands[1]->prefix, commands[1]->args);
+        perror("execvp");
+        exit(1);
+      }
+      else if (pid[1] > 0) {
+        // Parent executing
+        // waitpid(-1, &status, 0);
+        wait(NULL);
+        // wait(NULL);
+        // print_completion(cmd, status);
+        printf("does this work?\n");
+      }
+      else
+      {
+        // Error
+        perror("fork");
+        exit(1);
+      }
+    }
+
 
     /* Not piping */
     // printf("not piping\n");
@@ -235,31 +288,6 @@ void executeCommand(struct Command **commands, char* cmd, int numCommands) {
   else if (pid[0] > 0)
   {
     // Parent
-    if (numCommands == 2) {
-      pid[1] = fork();
-
-      if (pid[1] == 0) {
-        // Child 2 executing
-        close(pfd[1]);
-        dup2(pfd[0], STDIN_FILENO);
-        close(pfd[0]);
-        execvp(commands[1]->prefix, commands[1]->args);
-      }
-      else if (pid[1] > 0) {
-        // Parent executing
-        // waitpid(-1, &status, 0);
-        wait(NULL);
-        wait(NULL);
-        // print_completion(cmd, status);
-        printf("does this work?\n");
-      }
-      else
-      {
-        // Error
-        perror("fork");
-        exit(1);
-      }
-    }
     waitpid(-1, &status, 0);
     print_completion(cmd, status);
 
