@@ -179,7 +179,8 @@ int pwdBuiltIn()
   return retval;
 }
 
-void executeCommand(struct Command **commands, char* cmd, int numCommands) {
+void executeCommand(struct Command **commands, char *cmd, int numCommands)
+{
   int status;
   int fd;
   int pfd[2];
@@ -188,46 +189,31 @@ void executeCommand(struct Command **commands, char* cmd, int numCommands) {
   /* Regular command */
   pipe(pfd);
   pid[0] = fork();
-  if (pid == 0) {
+  if (pid[0] == 0)
+  {
     // Child
-    if (commands[2] != NULL) {
+    if (commands[2] != NULL)
+    {
       pipe(pfd);
       pid[1] = fork();
-      if (commands[1] != NULL) {
+      if (commands[1] != NULL)
+      {
         pipe(pfd);
         pid[2] = fork();
-        if (commands[0] != NULL) {
+        if (commands[0] != NULL)
+        {
           pipe(pfd);
           pid[3] = fork();
-          if (pid[3] == 0) {
-            // Child
-            close(pfd[0]);
-            dup2(pfd[1], STDOUT_FILENO);
-            close(pfd[1]);
-            execvp(commands[0]->prefix, commands[0]->args);
-            perror("execvp");
-            exit(1);
-          }
-          else if (pid[3] > 0) {
-            // Parent
-          }
-          else {
-            // Error
-            perror("fork");
-            exit(1);
-          }
-
-        }
+                }
       }
     }
 
-
-    if (commands[numCommands-1]->needs_output_redir)
+    if (commands[numCommands - 1]->needs_output_redir)
     {
-      if (commands[numCommands-1]->filename != NULL)
+      if (commands[numCommands - 1]->filename != NULL)
       {
-        strcat(commands[numCommands-1]->filename, ".txt");
-        fd = open(commands[numCommands-1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
+        strcat(commands[numCommands - 1]->filename, ".txt");
+        fd = open(commands[numCommands - 1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
         dup2(fd, STDOUT_FILENO);
         close(fd);
       }
@@ -236,10 +222,8 @@ void executeCommand(struct Command **commands, char* cmd, int numCommands) {
         fprintf(stderr, "Error: no output file\n");
       }
     }
-
-
   }
-  else if (pid > 0)
+  else if (pid[0] > 0)
   {
     // Parent
     waitpid(-1, &status, 0);
@@ -322,7 +306,6 @@ int main(void)
     }
 
     executeCommand(commands, cmd, cur_job);
-
   }
   return EXIT_SUCCESS;
 }
