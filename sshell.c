@@ -50,34 +50,24 @@ struct Command *parseCommand(char *cmdStr)
 
   for (i = 0; i < strlen(cmdStr) + 1; i++)
   {
-    if (cmdStr[i] != ' ' &&
-        cmdStr[i] != '\0' &&
-        cmdStr[i] != '>')
+    if (cmdStr[i] != ' ' && cmdStr[i] != '\0' && cmdStr[i] != '>')
     {
-
       /* Normal char */
       char temp[2] = {cmdStr[i], '\0'};
       str = strcat(cmd, temp);
-      // printf("%s\n", str);
     }
     else
     {
-      // printf("got into else\n");
       /* Hit space, meta-char, or endl */
       if (cmdStr[i] == ' ')
       {
-        // printf("got into space\n");
         if (!hit_output_redir)
         {
-          // printf("got into add to args\n");
           command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
-          // printf("added\n");
-          // printf("%s\n", command->args[j]);
         }
         else
         {
-          // printf("read in space after meta\n");
           continue;
         }
       }
@@ -88,50 +78,31 @@ struct Command *parseCommand(char *cmdStr)
           command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
         }
-        // printf("read in output redir\n");
         command->needs_output_redir = true;
         hit_output_redir = true;
       }
       else if (cmdStr[i] == '\0')
       {
-        // printf("got into endl\n");
         if (hit_output_redir)
         {
-          // printf("saving filename\n");
           command->filename = malloc(sizeof(char *));
           strcpy(command->filename, str);
-          // printf("filename saved\n");
         }
         else
         {
-          // printf("no output redir\n");
           command->args[j] = malloc(sizeof(str));
           strcpy(command->args[j], str);
         }
       }
-
       if (cmd[0] != '\0')
       {
-        // printf("clearing cmd\n");
         cmd[0] = '\0';
-        // printf("%s\n", command->args[j]);
         j++;
-        // printf("cmd cleared and j inced\n");
       }
     }
   }
   command->prefix = malloc(sizeof(char *));
   strcpy(command->prefix, command->args[0]);
-  // printf("%s\n", command->prefix);
-  // if (command->needs_output_redir)
-  // {
-  //   printf("%s\n", command->filename);
-  // }
-  // if (command->args[1]) {
-  //   printf("%s\n", command->args[1]);
-  // }
-  // exit(0);
-
   return command;
 }
 
@@ -204,22 +175,60 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   int pfd2[2];
   int pfd3[2];
   pid_t pid[4];
+  pid_t wpid;
 
   /* Regular command */
   /* Create pipe if neccessary */
   if (numCommands > 1)
   {
+    printf("piped once\n");
     pipe(pfd1);
-    if (numCommands > 2) {
+    if (numCommands > 2)
+    {
+      printf("piped twice\n");
       pipe(pfd2);
-      if (numCommands > 3) {
+      if (numCommands > 3)
+      {
+        printf("piped thrice\n");
         pipe(pfd3);
       }
     }
   }
 
   pid[0] = fork(); // Init and child
-  if (pid[0] == 0) // Child 1 executing
+  if (pid[0] > 0)  // Parent
+  {
+    if (numCommands >= 2)
+    {
+      pid[1] = fork();
+      if (pid[1] == 0)
+      {
+        // Child 2
+        close(pfd1[1]);
+        dup2(pfd1[0], STDIN_FILENO);
+        close(pfd1[0]);
+        execvp(commands[1]->prefix, commands[1]->args);
+        perror("execvp");
+        exit(1);
+      }
+      else if (pid[1] > 0)
+      {
+        // Parent
+        close(pfd1[1]);
+      }
+      else
+      {
+        // Error
+        perror("fork");
+        exit(1);
+      }
+    }
+    while ((wpid = wait(&status)) > 0)
+    {
+    }
+    print_completion(cmd, status);
+  }
+  else if (pid[0] == 0) // Child 1 executing
   {
     /* Piping */
     if (numCommands >= 2)
@@ -236,33 +245,6 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
     execvp(commands[0]->prefix, commands[0]->args);
     perror("execvp");
     exit(1);
-  }
-  else if (pid[0] > 0) // Parent 1
-  {
-    if (numCommands >= 2) {
-      pid[1] = fork();
-      if (pid[1] == 0) {
-        // Child 2
-        close(pfd1[1]);
-        dup2(pfd1[0], STDIN_FILENO);
-        close(pfd1[0]);
-        execvp(commands[1]->prefix, commands[1]->args);
-        perror("execvp");
-        exit(1);
-      }
-      else if (pid[1] > 0) {
-        // Parent 1
-        close(pfd1[1]);
-      }
-      else 
-      {
-        // Error
-        perror("fork");
-        exit(1);
-      }
-    }
-    waitpid(pid[1], &status, 0);
-    print_completion(cmd, status);
   }
   else
   {
