@@ -22,6 +22,11 @@ struct Command
   char *filename;
 } Command;
 
+struct Node {
+  char *dir;
+  struct Node* next;
+} Node;
+
 char *trim(char *str)
 {
   int len = strlen(str);
@@ -179,6 +184,15 @@ int pwdBuiltIn()
   return retval;
 }
 
+struct Node* createNode(char* directory) {
+  struct Node* node = (struct Node*)malloc(sizeof(struct Node));
+  node->dir = directory;
+  node->next = NULL;
+  return node;
+}
+
+
+
 // void outputRedirection() {
 //   if (commands[numCommands-1]->needs_output_redir)
 //   {
@@ -254,7 +268,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
         // Parent 1
         close(pfd1[1]);
       }
-      else 
+      else
       {
         // Error
         perror("fork");
@@ -272,10 +286,19 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   }
 }
 
+void addToList(struct Node** root, char* directory) {
+  struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
+  newNode->dir = (char*)malloc(sizeof(directory));
+  strcpy(newNode->dir, directory);
+  newNode->next = (*root);
+  (*root) = newNode;
+}
+
 int main(void)
 {
 
   char cmd[CMDLINE_MAX];
+  struct Node* head = NULL;
 
   while (1)
   {
@@ -285,7 +308,6 @@ int main(void)
     struct Command *commands[CMDS_MAX];
     int retval;
     int cur_job = 0;
-    // bool regularCommand = true;
 
     /* Print prompt */
     printf("sshell$ ");
@@ -323,6 +345,7 @@ int main(void)
       cur_job++;
     }
 
+    // printf("%s\n", cmd);
     /* Builtin commands */
     if (!strcmp(cmd, "exit"))
     {
@@ -334,15 +357,37 @@ int main(void)
     {
       retval = pwdBuiltIn();
       print_completion(cmd, retval);
-      // regularCommand = false;
     }
     else if (!strcmp(commands[0]->prefix, "cd"))
     {
       retval = cdBuiltIn(commands[0]->args[1]);
       print_completion(cmd, retval);
-      // regularCommand = false;
     }
+    else if (!strcmp(commands[0]->prefix, "pushd")) {
+      char buf[CMDLINE_MAX];
+      int retval = cdBuiltIn(commands[0]->args[1]);
+      retval = retval +1-1;
+      char *ndir = getcwd(buf, (size_t)CMDLINE_MAX);
+      // printf("cwd is %s\n", ndir);
 
+      addToList(&head, ndir);
+      // print_completion(cmd, retval);
+    }
+    else if (!strcmp(cmd, "popd")) {
+
+    }
+    else if (!strcmp(cmd, "dirs")) {
+      struct Node* node = head;
+      char buf[CMDLINE_MAX];
+      char* cur = getcwd(buf, (size_t)CMDLINE_MAX);
+      printf("%s\n", cur);
+
+      while (node != NULL) {
+        printf("%s\n", node->dir);
+        node = node->next;
+      }
+
+    }
     else
     {
       executeCommand(commands, cmd, cur_job);
