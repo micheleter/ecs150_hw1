@@ -46,6 +46,20 @@ bool checkCommand(struct Command **commands, int numCommands)
   }
   return true;
 }
+struct Node
+{
+  char *dir;
+  struct Node *next;
+} Node;
+
+void addNode(struct Node **root, char *directory)
+{
+  struct Node *newNode = (struct Node *)malloc(sizeof(struct Node));
+  newNode->dir = (char *)malloc(sizeof(directory));
+  strcpy(newNode->dir, directory);
+  newNode->next = (*root);
+  (*root) = newNode;
+}
 
 bool checkArgSize(char *fxn)
 {
@@ -451,6 +465,7 @@ int main(void)
 {
 
   char cmd[CMDLINE_MAX];
+  struct Node *head = NULL;
 
   while (1)
   {
@@ -547,6 +562,42 @@ int main(void)
     {
       retval = cdBuiltIn(commands[0]->args[1]);
       print_completion(cmd, retval);
+    }
+    else if (!strcmp(commands[0]->prefix, "pushd"))
+    {
+      char buf[CMDLINE_MAX];
+      int retval = cdBuiltIn(commands[0]->args[1]);
+      // retval = retval +1-1;
+      char *ndir = getcwd(buf, (size_t)CMDLINE_MAX);
+      // printf("cwd is %s\n", ndir);
+
+      addNode(&head, ndir);
+      print_completion(cmd, retval);
+    }
+    else if (!strcmp(cmd, "popd"))
+    {
+      int retval = cdBuiltIn(head->dir);
+      struct Node *tmp;
+      if (head != NULL)
+      {
+        tmp = head;
+        head = head->next;
+        free(tmp);
+      }
+      print_completion(cmd, retval);
+    }
+    else if (!strcmp(cmd, "dirs"))
+    {
+      struct Node *node = head;
+      char buf[CMDLINE_MAX];
+      char *cur = getcwd(buf, (size_t)CMDLINE_MAX);
+      printf("%s\n", cur);
+
+      while (node != NULL)
+      {
+        printf("%s\n", node->dir);
+        node = node->next;
+      }
     }
     else
     {
