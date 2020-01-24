@@ -18,9 +18,34 @@ struct Command
 {
   char *prefix;
   char *args[ARG_MAX];
+  int sizeOfArgs;
   bool needs_output_redir;
   char *filename;
 } Command;
+
+bool checkOutputRed(struct Command **commands, int numCommands)
+{
+  for (int i = 0; i < numCommands; i++)
+  {
+    if ((commands[i]->needs_output_redir) && (i != numCommands - 1))
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool checkCommand(struct Command **commands, int numCommands)
+{
+  for (int i = 0; i < numCommands; i++)
+  {
+    if (!commands[i]->prefix)
+    {
+      return false;
+    }
+  }
+  return true;
+}
 
 bool checkArgSize(char *fxn)
 {
@@ -53,6 +78,10 @@ struct Command *parseCommand(char *cmdStr)
 {
 
   struct Command *command = malloc(sizeof(struct Command));
+  if (!command)
+  {
+    exit(1);
+  }
   command->needs_output_redir = false;
   char cmd[CMDLINE_MAX] = "";
   char *str;
@@ -76,7 +105,12 @@ struct Command *parseCommand(char *cmdStr)
         if (!hit_output_redir)
         {
           command->args[j] = malloc(sizeof(str));
+          if (command->args[j] == NULL)
+          {
+            exit(1);
+          }
           strcpy(command->args[j], str);
+          command->sizeOfArgs += 1;
         }
         else
         {
@@ -85,10 +119,20 @@ struct Command *parseCommand(char *cmdStr)
       }
       else if (cmdStr[i] == '>')
       {
-        if (cmdStr[i - 1] != ' ')
+        if (i == 0)
+        {
+          fprintf(stderr, "Error: missing command\n");
+          return NULL;
+        }
+        else if (cmdStr[i - 1] != ' ')
         {
           command->args[j] = malloc(sizeof(str));
+          if (command->args[j] == NULL)
+          {
+            exit(1);
+          }
           strcpy(command->args[j], str);
+          command->sizeOfArgs += 1;
         }
         command->needs_output_redir = true;
         hit_output_redir = true;
@@ -98,12 +142,21 @@ struct Command *parseCommand(char *cmdStr)
         if (hit_output_redir)
         {
           command->filename = malloc(sizeof(char *));
+          if (command->filename == NULL)
+          {
+            exit(1);
+          }
           strcpy(command->filename, str);
         }
         else
         {
           command->args[j] = malloc(sizeof(str));
+          if (command->args[j] == NULL)
+          {
+            exit(1);
+          }
           strcpy(command->args[j], str);
+          command->sizeOfArgs += 1;
         }
       }
       if (cmd[0] != '\0')
@@ -114,6 +167,10 @@ struct Command *parseCommand(char *cmdStr)
     }
   }
   command->prefix = malloc(sizeof(char *));
+  if (command->prefix == NULL)
+  {
+    exit(1);
+  }
   strcpy(command->prefix, command->args[0]);
   return command;
 }
@@ -173,10 +230,6 @@ void outputRedirection(struct Command **commands, int numCommands, int fd)
       dup2(fd, STDOUT_FILENO);
       close(fd);
     }
-    else
-    {
-      fprintf(stderr, "Error: no output file\n");
-    }
   }
 }
 
@@ -184,6 +237,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
 {
   int status;
   int fd = 0;
+  // int fdn = open("/dev/null", O_WRONLY);
   int pfd1[2];
   int pfd2[2];
   int pfd3[2];
@@ -209,11 +263,19 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   }
 
   pid[0] = fork(); // Init and child
-  if (pid[0] > 0)  // Parent
+  if (pid[0] == -1)
+  {
+    exit(1);
+  }
+  if (pid[0] > 0) // Parent
   {
     if (numCommands >= 2)
     {
       pid[1] = fork();
+      if (pid[1] == -1)
+      {
+        exit(1);
+      }
       if (pid[1] > 0)
       {
         // Parent
@@ -221,6 +283,10 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
         if (numCommands >= 3)
         {
           pid[2] = fork();
+          if (pid[2] == -1)
+          {
+            exit(1);
+          }
           if (pid[2] > 0)
           {
             // Parent
@@ -228,6 +294,10 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
             if (numCommands >= 4)
             {
               pid[3] = fork();
+              if (pid[3] == -1)
+              {
+                exit(1);
+              }
               if (pid[3] > 0)
               {
                 // Parent
@@ -241,6 +311,14 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
                 close(pfd2[0]);
                 close(pfd2[1]);
 
+                if (commands[3]->needs_output_redir)
+                {
+                  if (numCommands == 4)
+                  {
+                    outputRedirection(commands, numCommands, fd);
+                  }
+                }
+                close(STDERR_FILENO);
                 close(pfd3[1]);
                 dup2(pfd3[0], STDIN_FILENO);
                 close(pfd3[0]);
@@ -262,6 +340,14 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
             close(pfd1[0]);
             close(pfd1[1]);
 
+            if (commands[2]->needs_output_redir)
+            {
+              if (numCommands == 3)
+              {
+                outputRedirection(commands, numCommands, fd);
+              }
+            }
+            close(STDERR_FILENO);
             close(pfd2[1]);
             dup2(pfd2[0], STDIN_FILENO);
             close(pfd2[0]);
@@ -286,6 +372,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
       else if (pid[1] == 0)
       {
         // Child 2
+        close(STDERR_FILENO);
         close(pfd1[1]);
         dup2(pfd1[0], STDIN_FILENO);
         close(pfd1[0]);
@@ -309,13 +396,26 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
     while ((wpid = wait(&status)) > 0)
     {
     }
-    print_completion(cmd, status);
+    // fprintf(stderr, "%d", WEXITSTATUS(status));
+    if (WEXITSTATUS(status) > 0)
+    {
+      fprintf(stderr, "Error: command not found\n");
+    }
+    print_completion(cmd, WEXITSTATUS(status));
   }
   else if (pid[0] == 0) // Child 1 executing
   {
     /* Piping */
     if (numCommands >= 2)
     {
+      if (commands[1]->needs_output_redir)
+      {
+        if (numCommands == 2)
+        {
+          outputRedirection(commands, numCommands, fd);
+        }
+      }
+      close(STDERR_FILENO);
       close(pfd1[0]);
       dup2(pfd1[1], STDOUT_FILENO);
       close(pfd1[1]);
@@ -326,18 +426,15 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
 
     if (commands[0]->needs_output_redir)
     {
-      fprintf(stderr, "ERROR\n");
       if (numCommands == 1)
       {
         outputRedirection(commands, numCommands, fd);
       }
-      else
-      {
-        fprintf(stderr, "Error: mislocated output redirection\n");
-      }
     }
 
     /* Not piping */
+    // dup2(fdn, STDERR_FILENO);
+    close(STDERR_FILENO);
     execvp(commands[0]->prefix, commands[0]->args);
     perror("execvp");
     exit(1);
@@ -374,6 +471,13 @@ int main(void)
     fgets(cmd, CMDLINE_MAX, stdin);
     // struct Command *command;
 
+    // Check if any command is even entered
+    if (cmd[0] == '\n')
+    {
+      fprintf(stderr, "Error: missing command\n");
+      continue;
+    }
+
     /* Print command line if stdin is not provided by terminal */
     if (!isatty(STDIN_FILENO))
     {
@@ -396,16 +500,34 @@ int main(void)
     {
       tok = trim(tok);
       cmdStrings[cur_job] = malloc(sizeof(tok));
+      if (cmdStrings[cur_job] == NULL)
+      {
+        exit(1);
+      }
       strcpy(cmdStrings[cur_job], tok);
       commands[cur_job] = malloc(sizeof(struct Command *));
+      if (commands[cur_job] == NULL)
+      {
+        exit(1);
+      }
       commands[cur_job] = parseCommand(cmdStrings[cur_job]);
       tok = strtok(NULL, "|");
       cur_job++;
     }
 
+    if (!checkCommand(commands, cur_job))
+    {
+      fprintf(stderr, "Error: missing command\n");
+      continue;
+    }
     if (!checkArgSize(fxn2))
     {
       fprintf(stderr, "Error: too many process arguments\n");
+      continue;
+    }
+    if (!checkOutputRed(commands, cur_job))
+    {
+      fprintf(stderr, "Error: mislocated output redirection\n");
       continue;
     }
 
@@ -420,17 +542,39 @@ int main(void)
     {
       retval = pwdBuiltIn();
       print_completion(cmd, retval);
-      // regularCommand = false;
     }
     else if (!strcmp(commands[0]->prefix, "cd"))
     {
       retval = cdBuiltIn(commands[0]->args[1]);
       print_completion(cmd, retval);
-      // regularCommand = false;
     }
     else
     {
       executeCommand(commands, cmd, cur_job);
+
+      // Free space
+
+      // for (int i = 0; i < cur_job; i++)
+      // {
+      //   free(cmdStrings[i]);
+      //   if (commands[i]->needs_output_redir)
+      //   {
+      //     free(commands[i]->filename);
+      //   }
+      //   for (int j = 0; j < commands[i]->sizeOfArgs; j++)
+      //   {
+      //     free(commands[i]->args[j]);
+      //   }
+      //   commands[i]->sizeOfArgs = 0;
+      //   free(commands[i]->prefix);
+      //   int j = 0;
+      //   while (commands[i]->args[j])
+      //   {
+      //     fprintf(stderr, "%d%s\n", i, commands[i]->args[j]);
+      //     j++;
+      //   }
+      //   free(commands[i]);
+      // }
     }
   }
   return EXIT_SUCCESS;
