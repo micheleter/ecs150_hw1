@@ -287,15 +287,12 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   /* Create pipes if neccessary */
   if (numCommands > 1)
   {
-    // printf("piped once\n");
     pipe(pfd1);
     if (numCommands > 2)
     {
-      // printf("piped twice\n");
       pipe(pfd2);
       if (numCommands > 3)
       {
-        // printf("piped thrice\n");
         pipe(pfd3);
       }
     }
@@ -536,13 +533,13 @@ int main(void)
     while (tok)
     {
       tok = trim(tok);
-      cmdStrings[cur_job] = malloc(sizeof(tok));
+      cmdStrings[cur_job] = malloc(sizeof(tok) * sizeof(char));
       if (cmdStrings[cur_job] == NULL)
       {
         exit(1);
       }
+      commands[cur_job] = (struct Command *)malloc(sizeof(struct Command *));
       strcpy(cmdStrings[cur_job], tok);
-      commands[cur_job] = malloc(sizeof(struct Command *));
       if (commands[cur_job] == NULL)
       {
         exit(1);
