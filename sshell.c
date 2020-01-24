@@ -23,14 +23,21 @@ struct Command
   char *filename;
 } Command;
 
-bool checkFileExists(struct Command **commands, int numCommands)
+bool checkFileExists(struct Command **commands, int numCommands, char *fxn)
 {
   if (commands[numCommands - 1]->needs_output_redir)
   {
-    if (access(commands[numCommands - 1]->filename, F_OK) == -1)
+    char *tok = strtok(fxn, ">");
+    tok = strtok(NULL, " |");
+    open(tok, O_CREAT | O_TRUNC | O_RDWR, 0644);
+    if (access(tok, W_OK) < 0)
     {
       return false;
     }
+  }
+  else
+  {
+    return true;
   }
   return true;
 }
@@ -267,6 +274,9 @@ void outputRedirection(struct Command **commands, int numCommands, int fd)
     if (commands[numCommands - 1]->filename != NULL)
     {
       fd = open(commands[numCommands - 1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
+      if (fd < 0)
+      {
+      }
       dup2(fd, STDOUT_FILENO);
       close(fd);
     }
@@ -493,6 +503,7 @@ int main(void)
     char fxn[CMDLINE_MAX];
     char fxn2[CMDLINE_MAX];
     char fxn3[CMDLINE_MAX];
+    char fxn4[CMDLINE_MAX];
     char *cmdStrings[CMDS_MAX];
     struct Command *commands[CMDS_MAX];
     int retval;
@@ -527,6 +538,7 @@ int main(void)
     strcpy(fxn, cmd);
     strcpy(fxn2, cmd);
     strcpy(fxn3, cmd);
+    strcpy(fxn4, cmd);
 
     // Pass fxn, pass commands arr, return cur_job
     char *tok = strtok(fxn, "|");
@@ -555,11 +567,11 @@ int main(void)
       continue;
     }
 
-    // if (!checkFileExists(commands, cur_job))
-    // {
-    //   fprintf(stderr, "Error: cannot open output file\n");
-    //   continue;
-    // }
+    if (!checkFileExists(commands, cur_job, fxn4))
+    {
+      fprintf(stderr, "Error: cannot open output file\n");
+      continue;
+    }
 
     if (!checkCommand(commands, cur_job))
     {
