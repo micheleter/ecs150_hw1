@@ -23,6 +23,21 @@ struct Command
   char *filename;
 } Command;
 
+bool checkForFile(struct Command **commands, int numCommands, char *fxn)
+{
+  if (commands[numCommands - 1]->needs_output_redir)
+  {
+    char *tok = strtok(fxn, ">");
+    tok = strtok(NULL, " ");
+
+    if (!tok)
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool checkOutputRed(struct Command **commands, int numCommands)
 {
   for (int i = 0; i < numCommands; i++)
@@ -46,6 +61,7 @@ bool checkCommand(struct Command **commands, int numCommands)
   }
   return true;
 }
+
 struct Node
 {
   char *dir;
@@ -239,6 +255,7 @@ void outputRedirection(struct Command **commands, int numCommands, int fd)
   {
     if (commands[numCommands - 1]->filename != NULL)
     {
+      fprintf(stderr, "%s\n", commands[numCommands - 1]->filename);
       strcat(commands[numCommands - 1]->filename, ".txt");
       fd = open(commands[numCommands - 1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
       dup2(fd, STDOUT_FILENO);
@@ -251,7 +268,6 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
 {
   int status;
   int fd = 0;
-  // int fdn = open("/dev/null", O_WRONLY);
   int pfd1[2];
   int pfd2[2];
   int pfd3[2];
@@ -410,7 +426,6 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
     while ((wpid = wait(&status)) > 0)
     {
     }
-    // fprintf(stderr, "%d", WEXITSTATUS(status));
     if (WEXITSTATUS(status) > 0)
     {
       fprintf(stderr, "Error: command not found\n");
@@ -447,7 +462,6 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
     }
 
     /* Not piping */
-    // dup2(fdn, STDERR_FILENO);
     close(STDERR_FILENO);
     execvp(commands[0]->prefix, commands[0]->args);
     perror("execvp");
@@ -472,11 +486,11 @@ int main(void)
     char *nl;
     char fxn[CMDLINE_MAX];
     char fxn2[CMDLINE_MAX];
+    char fxn3[CMDLINE_MAX];
     char *cmdStrings[CMDS_MAX];
     struct Command *commands[CMDS_MAX];
     int retval;
     int cur_job = 0;
-    // bool regularCommand = true;
 
     /* Print prompt */
     printf("sshell$ ");
@@ -484,12 +498,10 @@ int main(void)
 
     /* Get command line */
     fgets(cmd, CMDLINE_MAX, stdin);
-    // struct Command *command;
 
     // Check if any command is even entered
-    if (cmd[0] == '\n')
+    if (cmd[0] == '\n' || cmd[0] == ' ')
     {
-      // fprintf(stderr, "Error: missing command\n");
       continue;
     }
 
@@ -508,6 +520,7 @@ int main(void)
     /* Create copy of 'cmd' */
     strcpy(fxn, cmd);
     strcpy(fxn2, cmd);
+    strcpy(fxn3, cmd);
 
     // Pass fxn, pass commands arr, return cur_job
     char *tok = strtok(fxn, "|");
@@ -528,6 +541,12 @@ int main(void)
       commands[cur_job] = parseCommand(cmdStrings[cur_job]);
       tok = strtok(NULL, "|");
       cur_job++;
+    }
+
+    if (!checkForFile(commands, cur_job, fxn3))
+    {
+      fprintf(stderr, "Error: no output file\n");
+      continue;
     }
 
     if (!checkCommand(commands, cur_job))
