@@ -17,10 +17,24 @@
 struct Command
 {
   char *prefix;
-  char *args[ARG_MAX + 2];
+  char *args[ARG_MAX];
   bool needs_output_redir;
   char *filename;
 } Command;
+
+bool checkArgSize(char *fxn)
+{
+  int total = 0;
+
+  char *tok = strtok(fxn, " |>&");
+  while (tok)
+  {
+    total++;
+    tok = strtok(NULL, " |>&");
+  }
+
+  return (total <= ARG_MAX);
+}
 
 char *trim(char *str)
 {
@@ -148,27 +162,28 @@ int pwdBuiltIn()
   return retval;
 }
 
-// void outputRedirection() {
-//   if (commands[numCommands-1]->needs_output_redir)
-//   {
-//     if (commands[numCommands-1]->filename != NULL)
-//     {
-//       strcat(commands[numCommands-1]->filename, ".txt");
-//       fd = open(commands[numCommands-1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
-//       dup2(fd, STDOUT_FILENO);
-//       close(fd);
-//     }
-//     else
-//     {
-//       fprintf(stderr, "Error: no output file\n");
-//     }
-//   }
-// }
+void outputRedirection(struct Command **commands, int numCommands, int fd)
+{
+  if (commands[numCommands - 1]->needs_output_redir)
+  {
+    if (commands[numCommands - 1]->filename != NULL)
+    {
+      strcat(commands[numCommands - 1]->filename, ".txt");
+      fd = open(commands[numCommands - 1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
+    }
+    else
+    {
+      fprintf(stderr, "Error: no output file\n");
+    }
+  }
+}
 
 void executeCommand(struct Command **commands, char *cmd, int numCommands)
 {
   int status;
-  // int fd;
+  int fd = 0;
   int pfd1[2];
   int pfd2[2];
   int pfd3[2];
@@ -179,15 +194,15 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   /* Create pipes if neccessary */
   if (numCommands > 1)
   {
-    printf("piped once\n");
+    // printf("piped once\n");
     pipe(pfd1);
     if (numCommands > 2)
     {
-      printf("piped twice\n");
+      // printf("piped twice\n");
       pipe(pfd2);
       if (numCommands > 3)
       {
-        printf("piped thrice\n");
+        // printf("piped thrice\n");
         pipe(pfd3);
       }
     }
@@ -309,6 +324,19 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
       exit(1);
     }
 
+    if (commands[0]->needs_output_redir)
+    {
+      fprintf(stderr, "ERROR\n");
+      if (numCommands == 1)
+      {
+        outputRedirection(commands, numCommands, fd);
+      }
+      else
+      {
+        fprintf(stderr, "Error: mislocated output redirection\n");
+      }
+    }
+
     /* Not piping */
     execvp(commands[0]->prefix, commands[0]->args);
     perror("execvp");
@@ -331,6 +359,7 @@ int main(void)
   {
     char *nl;
     char fxn[CMDLINE_MAX];
+    char fxn2[CMDLINE_MAX];
     char *cmdStrings[CMDS_MAX];
     struct Command *commands[CMDS_MAX];
     int retval;
@@ -359,9 +388,10 @@ int main(void)
 
     /* Create copy of 'cmd' */
     strcpy(fxn, cmd);
+    strcpy(fxn2, cmd);
 
+    // Pass fxn, pass commands arr, return cur_job
     char *tok = strtok(fxn, "|");
-
     while (tok)
     {
       tok = trim(tok);
@@ -371,6 +401,12 @@ int main(void)
       commands[cur_job] = parseCommand(cmdStrings[cur_job]);
       tok = strtok(NULL, "|");
       cur_job++;
+    }
+
+    if (!checkArgSize(fxn2))
+    {
+      fprintf(stderr, "Error: too many process arguments\n");
+      continue;
     }
 
     /* Builtin commands */
@@ -392,7 +428,6 @@ int main(void)
       print_completion(cmd, retval);
       // regularCommand = false;
     }
-
     else
     {
       executeCommand(commands, cmd, cur_job);
