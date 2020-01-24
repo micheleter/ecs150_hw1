@@ -23,6 +23,23 @@ struct Command
   char *filename;
 } Command;
 
+struct Node
+{
+  char *dir;
+  struct Node *next;
+} Node;
+
+// Adds the new node to the front of the linked list (i.e. like a stack)
+void prepend(struct Node **root, char *directory)
+{
+  struct Node *newNode = (struct Node *)malloc(sizeof(struct Node));
+  newNode->dir = (char *)malloc(sizeof(directory));
+  strcpy(newNode->dir, directory);
+  newNode->next = *root;
+  *root = newNode;
+}
+
+// Checks if a given file is accessible
 bool checkFileExists(struct Command **commands, int numCommands, char *fxn)
 {
   if (commands[numCommands - 1]->needs_output_redir)
@@ -42,6 +59,7 @@ bool checkFileExists(struct Command **commands, int numCommands, char *fxn)
   return true;
 }
 
+// Checks for an inputted file, if one is required
 bool checkForFile(struct Command **commands, int numCommands, char *fxn)
 {
   if (commands[numCommands - 1]->needs_output_redir)
@@ -56,6 +74,7 @@ bool checkForFile(struct Command **commands, int numCommands, char *fxn)
   return true;
 }
 
+// Checks if output redirection is only used after the last pipe
 bool checkOutputRed(struct Command **commands, int numCommands)
 {
   for (int i = 0; i < numCommands; i++)
@@ -68,6 +87,7 @@ bool checkOutputRed(struct Command **commands, int numCommands)
   return true;
 }
 
+// Checks if the command is actually inputted
 bool checkCommand(struct Command **commands, int numCommands)
 {
   for (int i = 0; i < numCommands; i++)
@@ -80,41 +100,28 @@ bool checkCommand(struct Command **commands, int numCommands)
   return true;
 }
 
-struct Node
-{
-  char *dir;
-  struct Node *next;
-} Node;
-
-void addNode(struct Node **root, char *directory)
-{
-  struct Node *newNode = (struct Node *)malloc(sizeof(struct Node));
-  newNode->dir = (char *)malloc(sizeof(directory));
-  strcpy(newNode->dir, directory);
-  newNode->next = (*root);
-  (*root) = newNode;
-}
-
+// Checks the number of cmdline arguments inputted by the user
 bool checkArgSize(char *fxn)
 {
   int total = 0;
-
   char *tok = strtok(fxn, " |>&");
   while (tok)
   {
     total++;
     tok = strtok(NULL, " |>&");
   }
-
   return (total <= ARG_MAX);
 }
 
+// Trims whitespace from around words, used alongside piping parser in 'int main'
 char *trim(char *str)
 {
+  // If first character is a space, shift the pointer up one in memory
   if (str[0] == ' ')
   {
     memmove(str, str + 1, strlen(str));
   }
+  // If the last character is a space, just replace it with null terminator
   if (str[strlen(str) - 1] == ' ')
   {
     str[strlen(str) - 1] = '\0';
@@ -122,9 +129,10 @@ char *trim(char *str)
   return str;
 }
 
+// Parses the user input and saves it as a command struct to be used later
 struct Command *parseCommand(char *cmdStr)
 {
-
+  // Declare/initialize a few variables
   struct Command *command = malloc(sizeof(struct Command));
   if (!command)
   {
@@ -141,13 +149,14 @@ struct Command *parseCommand(char *cmdStr)
   {
     if (cmdStr[i] != ' ' && cmdStr[i] != '\0' && cmdStr[i] != '>')
     {
-      /* Normal char */
+      // Keep appending normal characters
       char temp[2] = {cmdStr[i], '\0'};
       str = strcat(cmd, temp);
     }
     else
     {
-      /* Hit space, meta-char, or endl */
+      // Hit space, meta-char, or endl
+      // Space is hit
       if (cmdStr[i] == ' ')
       {
         if (!hit_output_redir)
@@ -165,6 +174,7 @@ struct Command *parseCommand(char *cmdStr)
           continue;
         }
       }
+      // Output redirection is hit
       else if (cmdStr[i] == '>')
       {
         if (i == 0)
@@ -185,6 +195,7 @@ struct Command *parseCommand(char *cmdStr)
         command->needs_output_redir = true;
         hit_output_redir = true;
       }
+      // Terminator is hit
       else if (cmdStr[i] == '\0')
       {
         if (hit_output_redir)
@@ -207,6 +218,7 @@ struct Command *parseCommand(char *cmdStr)
           command->sizeOfArgs += 1;
         }
       }
+      // Resets the cmd string to take in new input
       if (cmd[0] != '\0')
       {
         cmd[0] = '\0';
@@ -223,21 +235,24 @@ struct Command *parseCommand(char *cmdStr)
   return command;
 }
 
+// Print completion message after cmd is executed
 void print_completion(char cmd[], int retval)
 {
-  // Print completion message after cmd is executed
   fprintf(stderr, "+ completed '%s' [%d]\n", cmd, retval);
 }
 
+// Exit the shell - external function
 int exitBuiltIn()
 {
   fprintf(stderr, "Bye...\n");
   return 0;
 }
 
+// Navigate through directories - external function
 int cdBuiltIn(char *dir)
 {
   int retval = 0;
+  // Check for a valid directory
   if (dir)
   {
     int exitVal = chdir(dir);
@@ -250,6 +265,7 @@ int cdBuiltIn(char *dir)
   return retval;
 }
 
+// Print the current working directory - external function
 int pwdBuiltIn()
 {
   int retval = 0;
@@ -267,16 +283,17 @@ int pwdBuiltIn()
   return retval;
 }
 
+// If output redirection is necessary, this function alters file descriptors accordingly
 void outputRedirection(struct Command **commands, int numCommands, int fd)
 {
+  // Check if the right-most command needs output redirection
   if (commands[numCommands - 1]->needs_output_redir)
   {
+    // Check if the filename is valid
     if (commands[numCommands - 1]->filename != NULL)
     {
+      // Create the file, and use it in place of STDOUT file descriptor
       fd = open(commands[numCommands - 1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
-      if (fd < 0)
-      {
-      }
       dup2(fd, STDOUT_FILENO);
       close(fd);
     }
@@ -293,8 +310,8 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   pid_t pid[4];
   pid_t wpid;
 
-  /* Regular command */
-  /* Create pipes if neccessary */
+  // Regular command
+  // Create appropriate number of pipes
   if (numCommands > 1)
   {
     pipe(pfd1);
@@ -352,6 +369,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
               else if (pid[3] == 0)
               {
                 // Child
+                // Close unused file descriptors
                 close(pfd1[0]);
                 close(pfd1[1]);
                 close(pfd2[0]);
@@ -364,6 +382,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
                     outputRedirection(commands, numCommands, fd);
                   }
                 }
+                // Rework file descriptors to account for pipes
                 close(STDERR_FILENO);
                 close(pfd3[1]);
                 dup2(pfd3[0], STDIN_FILENO);
@@ -383,6 +402,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
           else if (pid[2] == 0)
           {
             // Child
+            // Close unused file descriptors
             close(pfd1[0]);
             close(pfd1[1]);
 
@@ -393,10 +413,12 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
                 outputRedirection(commands, numCommands, fd);
               }
             }
+            // Rework file descriptors for the pipes
             close(STDERR_FILENO);
             close(pfd2[1]);
             dup2(pfd2[0], STDIN_FILENO);
             close(pfd2[0]);
+            // Check if there are more pipes, and reroute new fd's if needed
             if (numCommands > 3)
             {
               close(pfd3[0]);
@@ -418,10 +440,12 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
       else if (pid[1] == 0)
       {
         // Child 2
+        // Rework file descriptors for the pipes
         close(STDERR_FILENO);
         close(pfd1[1]);
         dup2(pfd1[0], STDIN_FILENO);
         close(pfd1[0]);
+        // Check if there are more pipes, and reroute new fd's if needed
         if (numCommands > 2)
         {
           close(pfd2[0]);
@@ -448,9 +472,10 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
     }
     print_completion(cmd, WEXITSTATUS(status));
   }
-  else if (pid[0] == 0) // Child 1 executing
+  else if (pid[0] == 0)
   {
-    /* Piping */
+    // Child 1
+    // Piping
     if (numCommands >= 2)
     {
       if (commands[1]->needs_output_redir)
@@ -477,7 +502,7 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
       }
     }
 
-    /* Not piping */
+    // Not piping
     close(STDERR_FILENO);
     execvp(commands[0]->prefix, commands[0]->args);
     perror("execvp");
@@ -499,6 +524,7 @@ int main(void)
 
   while (1)
   {
+    // Variables used
     char *nl;
     char fxn[CMDLINE_MAX];
     char fxn2[CMDLINE_MAX];
@@ -509,11 +535,11 @@ int main(void)
     int retval;
     int cur_job = 0;
 
-    /* Print prompt */
+    // Print prompt
     printf("sshell$ ");
     fflush(stdout);
 
-    /* Get command line */
+    // Get command line
     fgets(cmd, CMDLINE_MAX, stdin);
 
     // Check if any command is even entered
@@ -522,30 +548,30 @@ int main(void)
       continue;
     }
 
-    /* Print command line if stdin is not provided by terminal */
+    // Print command line if stdin is not provided by terminal
     if (!isatty(STDIN_FILENO))
     {
       printf("%s", cmd);
       fflush(stdout);
     }
 
-    /* Remove trailing newline from command line */
+    // Remove trailing newline from command line
     nl = strchr(cmd, '\n');
     if (nl)
       *nl = '\0';
 
-    /* Create copy of 'cmd' */
+    // Create copy of 'cmd'
     strcpy(fxn, cmd);
     strcpy(fxn2, cmd);
     strcpy(fxn3, cmd);
     strcpy(fxn4, cmd);
 
-    // Pass fxn, pass commands arr, return cur_job
+    // Retrieve commands, account for potential pipes
     char *tok = strtok(fxn, "|");
     while (tok)
     {
       tok = trim(tok);
-      cmdStrings[cur_job] = malloc(sizeof(tok) * sizeof(char));
+      cmdStrings[cur_job] = malloc(sizeof(tok));
       if (cmdStrings[cur_job] == NULL)
       {
         exit(1);
@@ -561,60 +587,73 @@ int main(void)
       cur_job++;
     }
 
+    // Check for a typed in output file from the user
     if (!checkForFile(commands, cur_job, fxn3))
     {
       fprintf(stderr, "Error: no output file\n");
       continue;
     }
 
+    // Check if the file is accessible
     if (!checkFileExists(commands, cur_job, fxn4))
     {
       fprintf(stderr, "Error: cannot open output file\n");
       continue;
     }
 
+    // Check if cmdline entry follow syntax
     if (!checkCommand(commands, cur_job))
     {
       fprintf(stderr, "Error: missing command\n");
       continue;
     }
+
+    // Check if arguments exceed 16
     if (!checkArgSize(fxn2))
     {
       fprintf(stderr, "Error: too many process arguments\n");
       continue;
     }
+
+    // Check if output redirection is in appropriate spot
     if (!checkOutputRed(commands, cur_job))
     {
       fprintf(stderr, "Error: mislocated output redirection\n");
       continue;
     }
 
-    /* Builtin commands */
+    // Builtin commands
+
+    // Exit the shell
     if (!strcmp(cmd, "exit"))
     {
       retval = exitBuiltIn();
       print_completion(cmd, retval);
       break;
     }
+    // Print working directory
     else if (!strcmp(cmd, "pwd"))
     {
       retval = pwdBuiltIn();
       print_completion(cmd, retval);
     }
+    // Change directory
     else if (!strcmp(commands[0]->prefix, "cd"))
     {
       retval = cdBuiltIn(commands[0]->args[1]);
       print_completion(cmd, retval);
     }
+    // Push a directory onto the stack (linkedlist)
     else if (!strcmp(commands[0]->prefix, "pushd"))
     {
       char buf[CMDLINE_MAX];
       int retval = cdBuiltIn(commands[0]->args[1]);
       char *ndir = getcwd(buf, (size_t)CMDLINE_MAX);
 
-      addNode(&head, ndir);
+      prepend(&head, ndir);
       print_completion(cmd, retval);
     }
+    // Pop a directory from the stack (linkedlist)
     else if (!strcmp(cmd, "popd"))
     {
       int retval = cdBuiltIn(head->dir);
@@ -627,6 +666,7 @@ int main(void)
       }
       print_completion(cmd, retval);
     }
+    // Show current stack contents (linkedlist)
     else if (!strcmp(cmd, "dirs"))
     {
       struct Node *node = head;
@@ -642,6 +682,7 @@ int main(void)
     }
     else
     {
+      // Run any non-builtin command
       executeCommand(commands, cmd, cur_job);
     }
   }
