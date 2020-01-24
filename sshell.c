@@ -474,7 +474,7 @@ int main(void)
     // Check if any command is even entered
     if (cmd[0] == '\n')
     {
-      fprintf(stderr, "Error: missing command\n");
+      // fprintf(stderr, "Error: missing command\n");
       continue;
     }
 
