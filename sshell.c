@@ -23,13 +23,24 @@ struct Command
   char *filename;
 } Command;
 
+bool checkFileExists(struct Command **commands, int numCommands)
+{
+  if (commands[numCommands - 1]->needs_output_redir)
+  {
+    if (access(commands[numCommands - 1]->filename, F_OK) == -1)
+    {
+      return false;
+    }
+  }
+  return true;
+}
+
 bool checkForFile(struct Command **commands, int numCommands, char *fxn)
 {
   if (commands[numCommands - 1]->needs_output_redir)
   {
     char *tok = strtok(fxn, ">");
     tok = strtok(NULL, " ");
-
     if (!tok)
     {
       return false;
@@ -546,6 +557,12 @@ int main(void)
     if (!checkForFile(commands, cur_job, fxn3))
     {
       fprintf(stderr, "Error: no output file\n");
+      continue;
+    }
+
+    if (!checkFileExists(commands, cur_job))
+    {
+      fprintf(stderr, "Error: cannot open output file\n");
       continue;
     }
 
