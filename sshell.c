@@ -266,8 +266,6 @@ void outputRedirection(struct Command **commands, int numCommands, int fd)
   {
     if (commands[numCommands - 1]->filename != NULL)
     {
-      fprintf(stderr, "%s\n", commands[numCommands - 1]->filename);
-      strcat(commands[numCommands - 1]->filename, ".txt");
       fd = open(commands[numCommands - 1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
       dup2(fd, STDOUT_FILENO);
       close(fd);
@@ -560,11 +558,11 @@ int main(void)
       continue;
     }
 
-    if (!checkFileExists(commands, cur_job))
-    {
-      fprintf(stderr, "Error: cannot open output file\n");
-      continue;
-    }
+    // if (!checkFileExists(commands, cur_job))
+    // {
+    //   fprintf(stderr, "Error: cannot open output file\n");
+    //   continue;
+    // }
 
     if (!checkCommand(commands, cur_job))
     {
@@ -603,9 +601,7 @@ int main(void)
     {
       char buf[CMDLINE_MAX];
       int retval = cdBuiltIn(commands[0]->args[1]);
-      // retval = retval +1-1;
       char *ndir = getcwd(buf, (size_t)CMDLINE_MAX);
-      // printf("cwd is %s\n", ndir);
 
       addNode(&head, ndir);
       print_completion(cmd, retval);
@@ -638,30 +634,6 @@ int main(void)
     else
     {
       executeCommand(commands, cmd, cur_job);
-
-      // Free space
-
-      // for (int i = 0; i < cur_job; i++)
-      // {
-      //   free(cmdStrings[i]);
-      //   if (commands[i]->needs_output_redir)
-      //   {
-      //     free(commands[i]->filename);
-      //   }
-      //   for (int j = 0; j < commands[i]->sizeOfArgs; j++)
-      //   {
-      //     free(commands[i]->args[j]);
-      //   }
-      //   commands[i]->sizeOfArgs = 0;
-      //   free(commands[i]->prefix);
-      //   int j = 0;
-      //   while (commands[i]->args[j])
-      //   {
-      //     fprintf(stderr, "%d%s\n", i, commands[i]->args[j]);
-      //     j++;
-      //   }
-      //   free(commands[i]);
-      // }
     }
   }
   return EXIT_SUCCESS;
