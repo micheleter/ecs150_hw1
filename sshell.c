@@ -17,15 +17,24 @@
 struct Command
 {
   char *prefix;
-  char *args[ARG_MAX + 2];
+  char *args[ARG_MAX];
   bool needs_output_redir;
   char *filename;
 } Command;
 
-struct Node {
-  char *dir;
-  struct Node* next;
-} Node;
+bool checkArgSize(char *fxn)
+{
+  int total = 0;
+
+  char *tok = strtok(fxn, " |>&");
+  while (tok)
+  {
+    total++;
+    tok = strtok(NULL, " |>&");
+  }
+
+  return (total <= ARG_MAX);
+}
 
 char *trim(char *str)
 {
@@ -153,36 +162,28 @@ int pwdBuiltIn()
   return retval;
 }
 
-struct Node* createNode(char* directory) {
-  struct Node* node = (struct Node*)malloc(sizeof(struct Node));
-  node->dir = directory;
-  node->next = NULL;
-  return node;
+void outputRedirection(struct Command **commands, int numCommands, int fd)
+{
+  if (commands[numCommands - 1]->needs_output_redir)
+  {
+    if (commands[numCommands - 1]->filename != NULL)
+    {
+      strcat(commands[numCommands - 1]->filename, ".txt");
+      fd = open(commands[numCommands - 1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
+      dup2(fd, STDOUT_FILENO);
+      close(fd);
+    }
+    else
+    {
+      fprintf(stderr, "Error: no output file\n");
+    }
+  }
 }
-
-
-
-// void outputRedirection() {
-//   if (commands[numCommands-1]->needs_output_redir)
-//   {
-//     if (commands[numCommands-1]->filename != NULL)
-//     {
-//       strcat(commands[numCommands-1]->filename, ".txt");
-//       fd = open(commands[numCommands-1]->filename, O_CREAT | O_TRUNC | O_RDWR, 0644);
-//       dup2(fd, STDOUT_FILENO);
-//       close(fd);
-//     }
-//     else
-//     {
-//       fprintf(stderr, "Error: no output file\n");
-//     }
-//   }
-// }
 
 void executeCommand(struct Command **commands, char *cmd, int numCommands)
 {
   int status;
-  // int fd;
+  int fd = 0;
   int pfd1[2];
   int pfd2[2];
   int pfd3[2];
@@ -193,15 +194,15 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   /* Create pipes if neccessary */
   if (numCommands > 1)
   {
-    printf("piped once\n");
+    // printf("piped once\n");
     pipe(pfd1);
     if (numCommands > 2)
     {
-      printf("piped twice\n");
+      // printf("piped twice\n");
       pipe(pfd2);
       if (numCommands > 3)
       {
-        printf("piped thrice\n");
+        // printf("piped thrice\n");
         pipe(pfd3);
       }
     }
@@ -298,13 +299,6 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
         perror("execvp");
         exit(1);
       }
-<<<<<<< HEAD
-      else if (pid[1] > 0) {
-        // Parent 1
-        close(pfd1[1]);
-      }
-=======
->>>>>>> 612e4be8accef668884e02227da3cfb2d0348b14
       else
       {
         // Error
@@ -330,6 +324,19 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
       exit(1);
     }
 
+    if (commands[0]->needs_output_redir)
+    {
+      fprintf(stderr, "ERROR\n");
+      if (numCommands == 1)
+      {
+        outputRedirection(commands, numCommands, fd);
+      }
+      else
+      {
+        fprintf(stderr, "Error: mislocated output redirection\n");
+      }
+    }
+
     /* Not piping */
     execvp(commands[0]->prefix, commands[0]->args);
     perror("execvp");
@@ -343,28 +350,21 @@ void executeCommand(struct Command **commands, char *cmd, int numCommands)
   }
 }
 
-void addToList(struct Node** root, char* directory) {
-  struct Node* newNode = (struct Node*)malloc(sizeof(struct Node));
-  newNode->dir = (char*)malloc(sizeof(directory));
-  strcpy(newNode->dir, directory);
-  newNode->next = (*root);
-  (*root) = newNode;
-}
-
 int main(void)
 {
 
   char cmd[CMDLINE_MAX];
-  struct Node* head = NULL;
 
   while (1)
   {
     char *nl;
     char fxn[CMDLINE_MAX];
+    char fxn2[CMDLINE_MAX];
     char *cmdStrings[CMDS_MAX];
     struct Command *commands[CMDS_MAX];
     int retval;
     int cur_job = 0;
+    // bool regularCommand = true;
 
     /* Print prompt */
     printf("sshell$ ");
@@ -388,9 +388,10 @@ int main(void)
 
     /* Create copy of 'cmd' */
     strcpy(fxn, cmd);
+    strcpy(fxn2, cmd);
 
+    // Pass fxn, pass commands arr, return cur_job
     char *tok = strtok(fxn, "|");
-
     while (tok)
     {
       tok = trim(tok);
@@ -402,7 +403,12 @@ int main(void)
       cur_job++;
     }
 
-    // printf("%s\n", cmd);
+    if (!checkArgSize(fxn2))
+    {
+      fprintf(stderr, "Error: too many process arguments\n");
+      continue;
+    }
+
     /* Builtin commands */
     if (!strcmp(cmd, "exit"))
     {
@@ -414,36 +420,13 @@ int main(void)
     {
       retval = pwdBuiltIn();
       print_completion(cmd, retval);
+      // regularCommand = false;
     }
     else if (!strcmp(commands[0]->prefix, "cd"))
     {
       retval = cdBuiltIn(commands[0]->args[1]);
       print_completion(cmd, retval);
-    }
-    else if (!strcmp(commands[0]->prefix, "pushd")) {
-      char buf[CMDLINE_MAX];
-      int retval = cdBuiltIn(commands[0]->args[1]);
-      retval = retval +1-1;
-      char *ndir = getcwd(buf, (size_t)CMDLINE_MAX);
-      // printf("cwd is %s\n", ndir);
-
-      addToList(&head, ndir);
-      // print_completion(cmd, retval);
-    }
-    else if (!strcmp(cmd, "popd")) {
-
-    }
-    else if (!strcmp(cmd, "dirs")) {
-      struct Node* node = head;
-      char buf[CMDLINE_MAX];
-      char* cur = getcwd(buf, (size_t)CMDLINE_MAX);
-      printf("%s\n", cur);
-
-      while (node != NULL) {
-        printf("%s\n", node->dir);
-        node = node->next;
-      }
-
+      // regularCommand = false;
     }
     else
     {
